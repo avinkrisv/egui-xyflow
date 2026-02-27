@@ -1,3 +1,5 @@
+//! Coordinate transforms between screen space and flow space.
+
 use crate::types::position::{SnapGrid, Transform};
 
 /// Convert screen point to flow coordinates.

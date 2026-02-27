@@ -1,3 +1,5 @@
+//! Positioning primitives: [`Position`], [`Dimensions`], [`Transform`], and related types.
+
 /// Handle/edge positioning relative to a node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -19,6 +21,7 @@ pub enum Position {
 }
 
 impl Position {
+    /// Return the opposite side (Top<->Bottom, Left<->Right).
     pub fn opposite(self) -> Self {
         match self {
             Position::Top => Position::Bottom,
@@ -30,10 +33,12 @@ impl Position {
         }
     }
 
+    /// Return `true` for `Left` or `Right`.
     pub fn is_horizontal(self) -> bool {
         matches!(self, Position::Left | Position::Right)
     }
 
+    /// Return `true` for `Top` or `Bottom`.
     pub fn is_vertical(self) -> bool {
         matches!(self, Position::Top | Position::Bottom)
     }
@@ -67,6 +72,7 @@ pub struct Dimensions {
 }
 
 impl Dimensions {
+    /// Create new dimensions.
     pub fn new(width: f32, height: f32) -> Self {
         Self { width, height }
     }
@@ -86,6 +92,7 @@ impl CoordinateExtent {
         max: egui::pos2(f32::INFINITY, f32::INFINITY),
     };
 
+    /// Create a new extent from min/max corners.
     pub fn new(min: egui::Pos2, max: egui::Pos2) -> Self {
         Self { min, max }
     }

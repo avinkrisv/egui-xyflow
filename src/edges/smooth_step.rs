@@ -1,3 +1,5 @@
+//! SmoothStep and Step edge path computation with rounded or sharp corners.
+
 use smallvec::SmallVec;
 
 use crate::types::edge::{EdgePathResult, EdgePosition};

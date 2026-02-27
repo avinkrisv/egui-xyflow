@@ -1,3 +1,5 @@
+//! Easing functions for smooth viewport transitions.
+
 /// Linear easing (no easing).
 pub fn ease_linear(t: f32) -> f32 {
     t

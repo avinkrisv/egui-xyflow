@@ -1,3 +1,8 @@
+//! Handle types for node connection points.
+//!
+//! [`NodeHandle`] is the user-facing type placed on nodes; [`Handle`] is the
+//! resolved version with absolute coordinates used internally.
+
 use std::sync::Arc;
 
 use super::position::Position;
@@ -27,6 +32,7 @@ pub struct Handle {
 }
 
 impl Handle {
+    /// Return the center point of this handle relative to its node.
     pub fn center(&self) -> egui::Pos2 {
         egui::pos2(self.x + self.width / 2.0, self.y + self.height / 2.0)
     }
@@ -48,6 +54,7 @@ pub struct NodeHandle {
 }
 
 impl NodeHandle {
+    /// Create a source (output) handle at the given position.
     pub fn source(position: Position) -> Self {
         Self {
             id: None,
@@ -60,6 +67,7 @@ impl NodeHandle {
         }
     }
 
+    /// Create a target (input) handle at the given position.
     pub fn target(position: Position) -> Self {
         Self {
             id: None,
@@ -72,6 +80,7 @@ impl NodeHandle {
         }
     }
 
+    /// Assign an identifier to this handle for multi-handle nodes.
     pub fn with_id(mut self, id: impl Into<String>) -> Self {
         self.id = Some(id.into());
         self

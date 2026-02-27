@@ -1,3 +1,5 @@
+//! Cubic Bezier and SimpleBezier edge path computation.
+
 use smallvec::smallvec;
 
 use crate::types::edge::{EdgePathResult, EdgePosition};
@@ -38,7 +40,7 @@ fn get_control_with_curvature(
     }
 }
 
-/// Calculate a cubic bezier path between source and target.
+/// Compute a cubic Bezier edge path between source and target positions.
 pub fn get_bezier_path(pos: &EdgePosition, curvature: Option<f32>) -> EdgePathResult {
     let c = curvature.unwrap_or(DEFAULT_CURVATURE);
     let source = egui::pos2(pos.source_x, pos.source_y);

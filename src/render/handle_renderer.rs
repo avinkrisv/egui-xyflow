@@ -1,3 +1,5 @@
+//! Handle rendering (connection point circles on nodes).
+
 use crate::config::FlowConfig;
 use crate::edges::positions::get_handle_absolute_position;
 use crate::graph::node_position::flow_to_screen;

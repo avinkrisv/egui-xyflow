@@ -1,3 +1,5 @@
+//! Connection types for in-progress and completed handle-to-handle connections.
+
 use super::handle::Handle;
 use super::node::NodeId;
 use super::position::Position;

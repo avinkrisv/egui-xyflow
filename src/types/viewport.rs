@@ -1,3 +1,5 @@
+//! Viewport state and related enums for pan/zoom control.
+
 use super::position::Transform;
 
 /// The current viewport state: pan offset and zoom level.

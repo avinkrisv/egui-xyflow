@@ -1,3 +1,5 @@
+//! Background pattern rendering (dots, lines, crosses).
+
 use crate::config::{BackgroundVariant, FlowConfig};
 use crate::types::viewport::Viewport;
 

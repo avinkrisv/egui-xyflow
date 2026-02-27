@@ -1,3 +1,5 @@
+//! Node types: [`Node`], [`NodeId`], [`NodeBuilder`], and internal representations.
+
 use std::sync::Arc;
 
 use super::handle::{Handle, NodeHandle};
@@ -11,6 +13,7 @@ use super::position::{CoordinateExtent, Dimensions, NodeOrigin, Position};
 pub struct NodeId(pub Arc<str>);
 
 impl NodeId {
+    /// Create a new node identifier.
     pub fn new(id: impl Into<Arc<str>>) -> Self {
         Self(id.into())
     }
@@ -86,6 +89,7 @@ pub struct Node<D = ()> {
 }
 
 impl<D: Default> Node<D> {
+    /// Create a [`NodeBuilder`] for constructing a node with a fluent API.
     pub fn builder(id: impl Into<Arc<str>>) -> NodeBuilder<D> {
         NodeBuilder::new(id)
     }
@@ -97,6 +101,7 @@ pub struct NodeBuilder<D = ()> {
 }
 
 impl<D: Default> NodeBuilder<D> {
+    /// Create a new builder with the given node ID and default values.
     pub fn new(id: impl Into<Arc<str>>) -> Self {
         Self {
             node: Node {
@@ -126,42 +131,50 @@ impl<D: Default> NodeBuilder<D> {
         }
     }
 
+    /// Set the node's initial position in flow space.
     pub fn position(mut self, pos: egui::Pos2) -> Self {
         self.node.position = pos;
         self
     }
 
+    /// Set the user data attached to this node.
     pub fn data(mut self, data: D) -> Self {
         self.node.data = data;
         self
     }
 
+    /// Add a connection handle to this node.
     pub fn handle(mut self, handle: NodeHandle) -> Self {
         self.node.handles.push(handle);
         self
     }
 
+    /// Set the explicit z-index for rendering order.
     pub fn z_index(mut self, z: i32) -> Self {
         self.node.z_index = Some(z);
         self
     }
 
+    /// Set whether the node is hidden.
     pub fn hidden(mut self, hidden: bool) -> Self {
         self.node.hidden = hidden;
         self
     }
 
+    /// Set the parent node ID for nested node groups.
     pub fn parent(mut self, parent_id: impl Into<Arc<str>>) -> Self {
         self.node.parent_id = Some(NodeId::new(parent_id));
         self
     }
 
+    /// Set the explicit width and height of this node.
     pub fn size(mut self, width: f32, height: f32) -> Self {
         self.node.width = Some(width);
         self.node.height = Some(height);
         self
     }
 
+    /// Consume the builder and return the constructed [`Node`].
     pub fn build(self) -> Node<D> {
         self.node
     }
@@ -199,16 +212,19 @@ pub struct InternalNode<D = ()> {
 }
 
 impl<D> InternalNode<D> {
+    /// Return the bounding rectangle in flow space.
     pub fn rect(&self) -> egui::Rect {
         let w = self.node.width.or(self.node.measured.map(|d| d.width)).unwrap_or(150.0);
         let h = self.node.height.or(self.node.measured.map(|d| d.height)).unwrap_or(40.0);
         egui::Rect::from_min_size(self.internals.position_absolute, egui::vec2(w, h))
     }
 
+    /// Return the effective width (explicit or measured or default).
     pub fn width(&self) -> f32 {
         self.node.width.or(self.node.measured.map(|d| d.width)).unwrap_or(150.0)
     }
 
+    /// Return the effective height (explicit or measured or default).
     pub fn height(&self) -> f32 {
         self.node.height.or(self.node.measured.map(|d| d.height)).unwrap_or(40.0)
     }

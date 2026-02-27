@@ -1,3 +1,5 @@
+//! Arrow marker rendering for edge endpoints.
+
 use crate::types::position::Position;
 
 /// Render an arrow marker at the given position.

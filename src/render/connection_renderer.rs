@@ -1,3 +1,5 @@
+//! In-progress connection line rendering.
+
 use crate::config::FlowConfig;
 use crate::edges::bezier::{get_bezier_path, sample_bezier};
 use crate::edges::smooth_step::get_smooth_step_path;

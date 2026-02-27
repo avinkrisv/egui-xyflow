@@ -1,3 +1,8 @@
+//! Change application logic.
+//!
+//! Pure functions that apply [`NodeChange`] and [`EdgeChange`] vectors to
+//! the node/edge `Vec`s using O(1) indexed lookups.
+
 use std::collections::HashMap;
 
 use crate::types::changes::{EdgeChange, NodeChange};

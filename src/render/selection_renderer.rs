@@ -1,3 +1,5 @@
+//! Selection rectangle overlay rendering.
+
 use egui::{Color32, Rect, Stroke};
 
 /// Render the selection rectangle overlay (solid border + semi-transparent fill).

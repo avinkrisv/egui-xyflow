@@ -1,3 +1,5 @@
+//! Graph query utilities: bounds, neighbors, and viewport fitting.
+
 use crate::types::edge::Edge;
 use crate::types::node::{InternalNode, NodeId};
 use std::collections::HashMap;

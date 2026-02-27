@@ -1,3 +1,9 @@
+//! Global configuration for the flow canvas.
+//!
+//! [`FlowConfig`] controls viewport behaviour, node defaults, connection
+//! handling, edge styling, background rendering, and more.  All fields have
+//! sensible defaults via [`FlowConfig::default()`].
+
 use crate::animation::easing;
 use crate::types::connection::ConnectionMode;
 use crate::types::edge::EdgeType;
@@ -35,71 +41,126 @@ pub enum ZIndexMode {
 /// and contact indicators.  All fields have sensible defaults.
 #[derive(Clone)]
 pub struct FlowConfig {
+    /// Minimum allowed zoom level.
     pub min_zoom: f32,
+    /// Maximum allowed zoom level.
     pub max_zoom: f32,
+    /// Enable panning by dragging on the canvas background.
     pub pan_on_drag: bool,
+    /// Enable panning via scroll wheel (instead of zooming).
     pub pan_on_scroll: bool,
+    /// Enable zooming via scroll wheel.
     pub zoom_on_scroll: bool,
+    /// Enable zooming via pinch gesture.
     pub zoom_on_pinch: bool,
+    /// Enable zoom-to-fit on double-click.
     pub zoom_on_double_click: bool,
+    /// Which axis responds to scroll-based panning.
     pub pan_on_scroll_mode: PanOnScrollMode,
+    /// Bounding box that limits how far the viewport can pan.
     pub translate_extent: CoordinateExtent,
+    /// Whether nodes can be dragged by default.
     pub nodes_draggable: bool,
+    /// Whether nodes can start connections by default.
     pub nodes_connectable: bool,
+    /// Whether nodes can be selected by default.
     pub nodes_selectable: bool,
     /// When `true`, a selected node shows 8 resize handles on its bounding
     /// rect.  Set to `false` for graph visualisations with custom-shaped
     /// (e.g. circular) nodes where rectangular resize handles are
     /// inappropriate.
     pub nodes_resizable: bool,
+    /// Minimum drag distance (in pixels) before a drag starts.
     pub node_drag_threshold: f32,
+    /// Bounding box that limits how far nodes can be dragged.
     pub node_extent: CoordinateExtent,
+    /// Origin offset `[x, y]` applied to node positions (0.0--1.0).
     pub node_origin: NodeOrigin,
+    /// Edge path algorithm used for new edges.
     pub default_edge_type: EdgeType,
+    /// Default edge stroke colour.
     pub edge_color: egui::Color32,
+    /// Edge stroke colour when selected.
     pub edge_selected_color: egui::Color32,
+    /// Default edge stroke width in logical pixels.
     pub edge_stroke_width: f32,
+    /// Raise connected edges above others when a node is selected.
     pub elevate_edges_on_select: bool,
+    /// Snap node positions to the grid when dragging.
     pub snap_to_grid: bool,
+    /// Grid cell size `[x, y]` used for snapping.
     pub snap_grid: SnapGrid,
+    /// How much of a node must overlap the selection rectangle.
     pub selection_mode: SelectionMode,
     /// If true, hold Shift to add to an existing selection.
     pub multi_selection_shift: bool,
+    /// Whether connections must land on a handle or can attach freely.
     pub connection_mode: ConnectionMode,
+    /// Maximum distance (in pixels) to snap a connection to a handle.
     pub connection_radius: f32,
+    /// Edge path algorithm used for the in-progress connection line.
     pub connection_line_type: EdgeType,
+    /// Auto-pan the viewport when dragging a connection near the edge.
     pub auto_pan_on_connect: bool,
+    /// Auto-pan the viewport when dragging a node near the edge.
     pub auto_pan_on_node_drag: bool,
+    /// Speed of auto-panning in pixels per frame.
     pub auto_pan_speed: f32,
+    /// Show the minimap overlay.
     pub show_minimap: bool,
+    /// Show the background pattern.
     pub show_background: bool,
+    /// Which background pattern to draw.
     pub background_variant: BackgroundVariant,
+    /// Spacing between background pattern elements.
     pub background_gap: f32,
+    /// Size of individual background pattern elements.
     pub background_size: f32,
+    /// Colour of the background pattern.
     pub background_color: egui::Color32,
+    /// How node z-index ordering is determined.
     pub z_index_mode: ZIndexMode,
+    /// Dash length for animated edges (in logical pixels).
     pub animated_edge_dash_length: f32,
+    /// Gap length between dashes for animated edges.
     pub animated_edge_gap_length: f32,
+    /// Animation speed for animated edges (pixels per second).
     pub animated_edge_speed: f32,
+    /// Default duration for viewport transitions (in seconds).
     pub default_transition_duration: f32,
+    /// Default easing function for viewport transitions.
     pub default_transition_easing: fn(f32) -> f32,
+    /// Animate the in-progress connection line.
     pub connection_line_animated: bool,
+    /// Diameter of connection handles (in logical pixels).
     pub handle_size: f32,
+    /// Default handle fill colour.
     pub handle_color: egui::Color32,
+    /// Handle fill colour on hover.
     pub handle_hover_color: egui::Color32,
+    /// Handle fill colour when a connection is attached.
     pub handle_connected_color: egui::Color32,
+    /// Default node width when not explicitly set.
     pub default_node_width: f32,
+    /// Default node height when not explicitly set.
     pub default_node_height: f32,
+    /// Default node background fill colour.
     pub node_bg_color: egui::Color32,
+    /// Node background fill colour when selected.
     pub node_selected_bg_color: egui::Color32,
+    /// Default node border colour.
     pub node_border_color: egui::Color32,
+    /// Node border colour when selected.
     pub node_selected_border_color: egui::Color32,
+    /// Node border stroke width.
     pub node_border_width: f32,
+    /// Node corner rounding radius.
     pub node_corner_radius: f32,
     /// Opacity multiplier (0.0–1.0) applied to node background fills in the
     /// default node widgets.  Values below 1.0 let edges underneath show
     /// through the node body.  Default: `1.0` (fully opaque).
     pub node_bg_opacity: f32,
+    /// Default node text colour.
     pub node_text_color: egui::Color32,
     /// Default position where source edges connect to a node when no explicit
     /// handle is specified.  Set to [`Position::Center`] for force-directed or

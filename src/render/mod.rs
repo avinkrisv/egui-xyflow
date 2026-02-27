@@ -1,3 +1,5 @@
+//! Rendering subsystem: canvas orchestration, node/edge/handle/background renderers.
+
 pub mod background;
 pub mod canvas;
 pub mod connection_renderer;

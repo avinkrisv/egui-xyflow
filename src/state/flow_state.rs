@@ -1,3 +1,9 @@
+//! Central graph state container.
+//!
+//! [`FlowState`] owns the node and edge vectors, the internal lookup cache,
+//! viewport, and animation state.  It is the single source of truth passed
+//! to [`crate::render::canvas::FlowCanvas`] each frame.
+
 use crate::types::position::CoordinateExtent;
 use std::collections::HashMap;
 
@@ -31,6 +37,7 @@ pub struct FlowState<ND = (), ED = ()> {
 }
 
 impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
+    /// Create a new flow state with the given configuration.
     pub fn new(config: FlowConfig) -> Self {
         Self {
             nodes: Vec::new(),
@@ -46,11 +53,13 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
         }
     }
 
+    /// Add a node to the graph and rebuild the internal lookup.
     pub fn add_node(&mut self, node: Node<ND>) {
         self.nodes.push(node);
         self.rebuild_lookup();
     }
 
+    /// Add an edge to the graph.
     pub fn add_edge(&mut self, edge: Edge<ED>) {
         if edge.animated {
             self.has_animated_edges = true;
@@ -58,6 +67,9 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
         self.edges.push(edge);
     }
 
+    /// Apply a batch of node mutations.  Non-structural changes (position,
+    /// dimensions, select) are applied incrementally; structural changes
+    /// (add, remove, replace) trigger a full lookup rebuild.
     pub fn apply_node_changes(&mut self, changes: &[NodeChange<ND>]) {
         let has_structural = changes.iter().any(|c| {
             matches!(
@@ -122,6 +134,7 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
         }
     }
 
+    /// Apply a batch of edge mutations.
     pub fn apply_edge_changes(&mut self, changes: &[EdgeChange<ED>]) {
         apply_edge_changes(changes, &mut self.edges);
         self.has_animated_edges = self.edges.iter().any(|e| e.animated);

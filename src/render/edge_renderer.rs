@@ -1,3 +1,5 @@
+//! Edge rendering: path computation, stroke painting, and animation.
+
 use crate::config::FlowConfig;
 use crate::edges::bezier::{get_bezier_path, sample_bezier};
 use crate::edges::positions::get_edge_position;

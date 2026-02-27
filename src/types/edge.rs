@@ -1,3 +1,5 @@
+//! Edge types: [`Edge`], [`EdgeId`], path algorithms, markers, anchors, and styling.
+
 use std::sync::Arc;
 
 use smallvec::SmallVec;
@@ -55,6 +57,7 @@ pub struct EdgeAnchor {
 }
 
 impl EdgeAnchor {
+    /// Create a new anchor on the given side at normalized position `t`.
     pub fn new(side: Position, t: f32) -> Self {
         Self { side, t: t.clamp(0.0, 1.0) }
     }
@@ -87,6 +90,7 @@ pub enum AnchorEndpoint {
 pub struct EdgeId(pub Arc<str>);
 
 impl EdgeId {
+    /// Create a new edge identifier.
     pub fn new(id: impl Into<Arc<str>>) -> Self {
         Self(id.into())
     }
@@ -223,16 +227,19 @@ impl<D: Default> Edge<D> {
 }
 
 impl<D> Edge<D> {
+    /// Set the path algorithm for this edge.
     pub fn edge_type(mut self, t: EdgeType) -> Self {
         self.edge_type = Some(t);
         self
     }
 
+    /// Enable or disable dash animation on this edge.
     pub fn animated(mut self, animated: bool) -> Self {
         self.animated = animated;
         self
     }
 
+    /// Add a closed arrow marker at the target end.
     pub fn marker_end_arrow(mut self) -> Self {
         self.marker_end = Some(EdgeMarker {
             marker_type: MarkerType::ArrowClosed,
@@ -244,16 +251,19 @@ impl<D> Edge<D> {
         self
     }
 
+    /// Set a custom source endpoint anchor position.
     pub fn source_anchor(mut self, anchor: EdgeAnchor) -> Self {
         self.source_anchor = Some(anchor);
         self
     }
 
+    /// Set a custom target endpoint anchor position.
     pub fn target_anchor(mut self, anchor: EdgeAnchor) -> Self {
         self.target_anchor = Some(anchor);
         self
     }
 
+    /// Override the global anchor-dragging setting for this edge.
     pub fn anchors_draggable(mut self, draggable: bool) -> Self {
         self.anchors_draggable = Some(draggable);
         self

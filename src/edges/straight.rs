@@ -1,7 +1,10 @@
+//! Straight-line edge path computation.
+
 use smallvec::smallvec;
 
 use crate::types::edge::{EdgePathResult, EdgePosition};
 
+/// Compute a straight-line edge path between source and target.
 pub fn get_straight_path(pos: &EdgePosition) -> EdgePathResult {
     let source = egui::pos2(pos.source_x, pos.source_y);
     let target = egui::pos2(pos.target_x, pos.target_y);

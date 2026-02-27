@@ -1,3 +1,9 @@
+//! Node rendering via the [`NodeWidget`] trait.
+//!
+//! Implement [`NodeWidget`] for custom node appearance; use
+//! [`DefaultNodeWidget`] (for `String` data) or [`UnitNodeWidget`] (for `()`)
+//! for built-in rectangle rendering.
+
 use crate::config::FlowConfig;
 use crate::types::node::Node;
 use crate::types::position::Transform;

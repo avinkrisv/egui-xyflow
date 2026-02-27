@@ -1,3 +1,5 @@
+//! Animated viewport transitions between two [`Viewport`] states.
+
 use crate::types::viewport::Viewport;
 
 /// Animates viewport transitions with easing.
@@ -12,6 +14,7 @@ pub struct ViewportAnimation {
 }
 
 impl ViewportAnimation {
+    /// Create a new animation from `start` to `target` over `duration` seconds.
     pub fn new(
         from: Viewport,
         to: Viewport,

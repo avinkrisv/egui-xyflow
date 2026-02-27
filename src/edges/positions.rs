@@ -1,3 +1,5 @@
+//! Edge endpoint position resolution from handles, anchors, and node geometry.
+
 use crate::types::edge::EdgePosition;
 use crate::types::handle::{Handle, HandleType};
 use crate::types::node::{InternalNode, NodeId};
