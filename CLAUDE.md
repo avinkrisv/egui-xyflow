@@ -72,3 +72,18 @@ All mutations are represented as enum variants (`NodeChange::Position`, `NodeCha
 - `egui 0.31`, `emath 0.31`, `epaint 0.31` — UI framework
 - `serde` (optional, default-enabled) — serialization
 - `eframe` (dev only) — for running examples
+
+## Mandatory Coding Cnstructions
+
+The following instructions must be followed. If there is a need that these instructions might not hold true, ask the user what to do.
+
+1. Use iterators and closures — they're zero-cost and often faster than manual loops.
+2. Pre-allocate collections with with_capacity() when you know sizes.
+3. Use SmallVec for frequently-created short collections.
+4. Use Cow<str> when a function might or might not need to allocate.
+5. Use the newtype pattern for type safety without runtime cost.
+6. Use the typestate pattern for state machines and builders that need compile-time correctness.
+7. Prefer &str and &[T] in function parameters; own data in structs.
+8. Enable LTO and single codegen-unit in release profiles.
+9. Profile before optimizing — use flamegraphs and DHAT.
+10. Don't fight the borrow checker — restructure data rather than adding Rc<RefCell<T>> or .clone() everywhere.

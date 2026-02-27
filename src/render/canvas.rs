@@ -379,7 +379,7 @@ where
             }
 
             // Allocate an interaction region for this node
-            let node_egui_id = canvas_id.with(id.0.as_str());
+            let node_egui_id = canvas_id.with(id.as_str());
             let node_resp = ui.interact(screen_rect, node_egui_id, egui::Sense::click_and_drag());
 
             let is_hovered = node_resp.hovered() && !pointer_on_resize_handle;
@@ -673,13 +673,13 @@ where
         // Start a new connection drag
         if let Some((handle, from_flow)) = newly_pressed_handle {
             let from_pos = handle.position;
-            events.set_connection_started(NodeId::new(handle.node_id.clone()));
+            events.set_connection_started(NodeId(handle.node_id.clone()));
             self.state.connection_state = ConnectionState::InProgress {
                 is_valid: None,
                 from: from_flow,
                 from_handle: handle.clone(),
                 from_position: from_pos,
-                from_node_id: NodeId::new(handle.node_id.clone()),
+                from_node_id: NodeId(handle.node_id.clone()),
                 to: from_flow,
                 to_handle: Box::new(None),
                 to_position: from_pos.opposite(),
@@ -1568,7 +1568,7 @@ fn handle_anchor_drag<ND, ED>(
     }
 
     // ── During drag: draw a preview dot on the node border ───────────────────
-    if let Some(ref drag) = anchor_drag {
+    if let Some(drag) = anchor_drag {
         ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         let flow_pp = screen_to_flow(pp, transform);
         if let Some(node) = node_lookup.get(&drag.node_id) {

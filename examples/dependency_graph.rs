@@ -110,7 +110,7 @@ impl CyclePreventionValidator {
         // Build adjacency list from current edges + the proposed edge.
         let mut adj: HashMap<&str, Vec<&str>> = HashMap::new();
         for e in existing_edges {
-            adj.entry(e.source.0.as_str()).or_default().push(e.target.0.as_str());
+            adj.entry(e.source.as_str()).or_default().push(e.target.as_str());
         }
         adj.entry(source).or_default().push(target);
 
@@ -136,7 +136,7 @@ impl CyclePreventionValidator {
 
 impl ConnectionValidator for CyclePreventionValidator {
     fn is_valid_connection(&self, connection: &Connection, existing_edges: &[EdgeInfo<'_>]) -> bool {
-        !Self::would_create_cycle(&connection.source.0, &connection.target.0, existing_edges)
+        !Self::would_create_cycle(connection.source.as_str(), connection.target.as_str(), existing_edges)
     }
 }
 
@@ -162,8 +162,8 @@ fn topological_sort(node_ids: &[String], edges: &[(String, String)]) -> Option<V
 
     let mut queue: Vec<&str> = in_degree
         .iter()
-        .filter(|(_, &d)| d == 0)
-        .map(|(&id, _)| id)
+        .filter(|(_, d)| **d == 0)
+        .map(|(id, _)| *id)
         .collect();
     queue.sort(); // deterministic order
 
@@ -388,7 +388,7 @@ impl DepGraphApp {
         for (src, tgt) in &deps {
             let eid = format!("e-{}-{}", src, tgt);
             state.add_edge(
-                Edge::new(&eid, *src, *tgt)
+                Edge::new(eid, *src, *tgt)
                     .edge_type(EdgeType::Bezier)
                     .marker_end_arrow(),
             );
@@ -414,13 +414,13 @@ impl DepGraphApp {
         self.state
             .edges
             .iter()
-            .map(|e| (e.source.0.clone(), e.target.0.clone()))
+            .map(|e| (e.source.to_string(), e.target.to_string()))
             .collect()
     }
 
     /// Collect all node IDs.
     fn node_ids(&self) -> Vec<String> {
-        self.state.nodes.iter().map(|n| n.id.0.clone()).collect()
+        self.state.nodes.iter().map(|n| n.id.to_string()).collect()
     }
 
     /// Look up a node's task name given its id string.
@@ -428,7 +428,7 @@ impl DepGraphApp {
         self.state
             .nodes
             .iter()
-            .find(|n| n.id.0 == id)
+            .find(|n| n.id.as_str() == id)
             .map(|n| {
                 let (name, _) = decode_data(&n.data);
                 name.to_string()
@@ -438,7 +438,7 @@ impl DepGraphApp {
 
     /// Toggle the status of a clicked node and update animated edges.
     fn toggle_node_status(&mut self, node_id: &str) {
-        if let Some(node) = self.state.nodes.iter_mut().find(|n| n.id.0 == node_id) {
+        if let Some(node) = self.state.nodes.iter_mut().find(|n| n.id.as_str() == node_id) {
             let (name, status) = decode_data(&node.data);
             let new_status = status.next();
             let name_owned = name.to_string();
@@ -466,12 +466,12 @@ impl DepGraphApp {
                 let (_, status) = decode_data(&n.data);
                 status == TaskStatus::Running
             })
-            .map(|n| n.id.0.clone())
+            .map(|n| n.id.to_string())
             .collect();
 
         let mut any_animated = false;
         for edge in &mut self.state.edges {
-            edge.animated = running_nodes.contains(&edge.source.0);
+            edge.animated = running_nodes.contains(edge.source.as_str());
             if edge.animated {
                 any_animated = true;
             }
@@ -483,14 +483,14 @@ impl DepGraphApp {
     fn handle_events(&mut self, events: &FlowEvents) {
         // Process node clicks -- toggle status.
         for nid in &events.nodes_clicked {
-            let id_str = nid.0.clone();
+            let id_str = nid.to_string();
             self.toggle_node_status(&id_str);
         }
 
         // Log new connections.
         for conn in &events.connections_made {
-            let src_name = self.task_name_for_id(&conn.source.0);
-            let tgt_name = self.task_name_for_id(&conn.target.0);
+            let src_name = self.task_name_for_id(conn.source.as_str());
+            let tgt_name = self.task_name_for_id(conn.target.as_str());
             self.log(format!("+ edge: {} -> {}", src_name, tgt_name));
         }
 
@@ -499,12 +499,12 @@ impl DepGraphApp {
             let names: Vec<String> = events
                 .nodes_deleted
                 .iter()
-                .map(|id| self.task_name_for_id(&id.0))
+                .map(|id| self.task_name_for_id(id.as_str()))
                 .collect();
             self.log(format!("- deleted nodes: {}", names.join(", ")));
         }
         if !events.edges_deleted.is_empty() {
-            let ids: Vec<String> = events.edges_deleted.iter().map(|e| e.0.clone()).collect();
+            let ids: Vec<String> = events.edges_deleted.iter().map(|e| e.to_string()).collect();
             self.log(format!("- deleted edges: {}", ids.join(", ")));
         }
     }
@@ -580,7 +580,7 @@ impl eframe::App for DepGraphApp {
                                     .state
                                     .nodes
                                     .iter()
-                                    .find(|n| n.id.0 == *id)
+                                    .find(|n| n.id.as_str() == id.as_str())
                                     .map(|n| {
                                         let (_, s) = decode_data(&n.data);
                                         s

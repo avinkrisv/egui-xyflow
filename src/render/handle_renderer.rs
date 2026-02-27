@@ -13,7 +13,9 @@ pub(crate) fn render_handles<D>(
     hovered_node: bool,
     pointer_pos: Option<egui::Pos2>,
 ) -> Vec<HandleHitRect> {
-    let mut hit_rects = Vec::new();
+    let source_count = node.internals.handle_bounds.source.len();
+    let target_count = node.internals.handle_bounds.target.len();
+    let mut hit_rects = Vec::with_capacity(source_count + target_count);
     let handle_radius = config.handle_size * 0.5 * transform.scale;
 
     let all_handles = node

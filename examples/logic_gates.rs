@@ -85,7 +85,7 @@ impl<'a> NodeWidget<String> for GateNodeWidget<'a> {
         _hovered: bool,
         _transform: &Transform,
     ) {
-        let signal = self.signals.get(&node.id.0).copied().unwrap_or(false);
+        let signal = self.signals.get(node.id.as_str()).copied().unwrap_or(false);
         let is_input = node.data.starts_with("INPUT:");
         let is_output = node.data == "OUTPUT";
         let label = gate_label(&node.data);
@@ -344,21 +344,21 @@ impl LogicGatesApp {
         let mut successors: HashMap<&str, Vec<&str>> = HashMap::new();
 
         for node in &self.state.nodes {
-            in_degree.entry(&node.id.0).or_insert(0);
+            in_degree.entry(node.id.as_str()).or_insert(0);
         }
         for edge in &self.state.edges {
-            *in_degree.entry(&edge.target.0).or_insert(0) += 1;
+            *in_degree.entry(edge.target.as_str()).or_insert(0) += 1;
             successors
-                .entry(&edge.source.0)
+                .entry(edge.source.as_str())
                 .or_default()
-                .push(&edge.target.0);
+                .push(edge.target.as_str());
         }
 
         // Kahn's algorithm
         let mut queue: VecDeque<&str> = in_degree
             .iter()
-            .filter(|(_, &deg)| deg == 0)
-            .map(|(&id, _)| id)
+            .filter(|(_, deg)| **deg == 0)
+            .map(|(id, _)| *id)
             .collect();
 
         let mut order: Vec<&str> = Vec::new();
@@ -381,9 +381,9 @@ impl LogicGatesApp {
         for edge in &self.state.edges {
             let th = edge.target_handle.as_deref().unwrap_or("");
             input_map
-                .entry(&edge.target.0)
+                .entry(edge.target.as_str())
                 .or_default()
-                .insert(th, &edge.source.0);
+                .insert(th, edge.source.as_str());
         }
 
         // Evaluate in topological order
@@ -394,7 +394,7 @@ impl LogicGatesApp {
                 .state
                 .nodes
                 .iter()
-                .find(|n| n.id.0 == nid)
+                .find(|n| n.id.as_str() == nid)
                 .map(|n| n.data.as_str())
                 .unwrap_or("");
 
@@ -487,7 +487,7 @@ impl eframe::App for LogicGatesApp {
                     .show(ui, |ui| {
                         for node in &self.state.nodes {
                             let sig =
-                                self.signals.get(&node.id.0).copied().unwrap_or(false);
+                                self.signals.get(node.id.as_str()).copied().unwrap_or(false);
                             let bit = if node.data.starts_with("INPUT:") {
                                 if node.data.ends_with(":1") {
                                     "1"
@@ -507,7 +507,7 @@ impl eframe::App for LogicGatesApp {
                             };
                             ui.horizontal(|ui| {
                                 ui.colored_label(color, "\u{25cf}");
-                                ui.label(format!("{} ({}): {bit}", node.id.0, label));
+                                ui.label(format!("{} ({}): {bit}", node.id, label));
                             });
                         }
                     });
@@ -555,9 +555,9 @@ impl eframe::App for LogicGatesApp {
                     let eid = format!("e_{}", self.next_edge_id);
                     self.next_edge_id += 1;
                     let mut edge = Edge::new(
-                        &eid,
-                        conn.source.0.clone(),
-                        conn.target.0.clone(),
+                        &*eid,
+                        conn.source.as_str(),
+                        conn.target.as_str(),
                     )
                     .edge_type(EdgeType::SmoothStep)
                     .marker_end_arrow();

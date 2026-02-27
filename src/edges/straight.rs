@@ -1,3 +1,5 @@
+use smallvec::smallvec;
+
 use crate::types::edge::{EdgePathResult, EdgePosition};
 
 pub fn get_straight_path(pos: &EdgePosition) -> EdgePathResult {
@@ -7,7 +9,7 @@ pub fn get_straight_path(pos: &EdgePosition) -> EdgePathResult {
     let center_y = (pos.source_y + pos.target_y) / 2.0;
 
     EdgePathResult {
-        points: vec![source, target],
+        points: smallvec![source, target],
         label_pos: egui::pos2(center_x, center_y),
         center_x,
         center_y,

@@ -50,7 +50,8 @@ pub fn is_node_selected<D>(node_lookup: &HashMap<NodeId, InternalNode<D>>, id: &
 
 /// Return all node IDs, sorted by z-index ascending (lowest drawn first).
 pub fn sorted_by_z<D>(node_lookup: &HashMap<NodeId, InternalNode<D>>) -> Vec<NodeId> {
-    let mut ids: Vec<_> = node_lookup.keys().cloned().collect();
+    let mut ids = Vec::with_capacity(node_lookup.len());
+    ids.extend(node_lookup.keys().cloned());
     ids.sort_by_key(|id| node_lookup.get(id).map(|n| n.internals.z).unwrap_or(0));
     ids
 }
@@ -249,8 +250,8 @@ mod tests {
         let lk = make_lookup();
         let sorted = sorted_by_z(&lk);
         // "a" (z=0) and "c" (z=0) come before "b" (z=1)
-        let pos_b = sorted.iter().position(|id| id.0 == "b").unwrap();
-        let pos_a = sorted.iter().position(|id| id.0 == "a").unwrap();
+        let pos_b = sorted.iter().position(|id| id.as_str() == "b").unwrap();
+        let pos_a = sorted.iter().position(|id| id.as_str() == "a").unwrap();
         assert!(pos_a < pos_b);
     }
 

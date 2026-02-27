@@ -1,21 +1,22 @@
 [package]
 name = "egui_xyflow"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.76"
+edition = "2024"
+rust-version = "1.85"
 description = "An interactive node-graph editor widget for egui, inspired by xyflow (React Flow)"
 license = "MIT"
 repository = "https://github.com/avinkrism4pro/egui_xyflow"
 readme = "README.md"
 keywords = ["egui", "node-graph", "flow", "editor", "xyflow"]
 categories = ["gui", "visualization"]
-exclude = ["CLAUDE.md", ".claude/"]
+exclude = ["CLAUDE.md", ".claude/", "benchmarks/"]
 
 [dependencies]
 egui = "0.31"
 emath = "0.31"
 epaint = "0.31"
-serde = { version = "1", features = ["derive"], optional = true }
+serde = { version = "1", features = ["derive", "rc"], optional = true }
+smallvec = "1"
 log = "0.4"
 
 [dev-dependencies]
@@ -82,3 +83,11 @@ path = "examples/collapsible_tree.rs"
 [[example]]
 name = "hierarchical_edge_bundling"
 path = "examples/hierarchical_edge_bundling.rs"
+
+[[example]]
+name = "stress_test"
+path = "examples/stress_test.rs"
+
+[profile.release]
+lto = true
+codegen-units = 1

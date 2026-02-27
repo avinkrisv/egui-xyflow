@@ -1,3 +1,5 @@
+use smallvec::smallvec;
+
 use crate::types::edge::{EdgePathResult, EdgePosition};
 use crate::types::position::Position;
 
@@ -64,7 +66,7 @@ pub fn get_bezier_path(pos: &EdgePosition, curvature: Option<f32>) -> EdgePathRe
     let center_y = 0.125 * source.y + 0.375 * cp1.y + 0.375 * cp2.y + 0.125 * target.y;
 
     EdgePathResult {
-        points: vec![source, cp1, cp2, target],
+        points: smallvec![source, cp1, cp2, target],
         label_pos: egui::pos2(center_x, center_y),
         center_x,
         center_y,

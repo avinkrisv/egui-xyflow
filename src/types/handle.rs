@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::position::Position;
 
 /// Whether a handle is a source (output) or target (input) for connections.
@@ -15,7 +17,7 @@ pub enum HandleType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Handle {
     pub id: Option<String>,
-    pub node_id: String,
+    pub node_id: Arc<str>,
     pub x: f32,
     pub y: f32,
     pub position: Position,

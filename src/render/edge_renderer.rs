@@ -26,7 +26,7 @@ pub(crate) fn render_edges<ND, ED>(
     config: &FlowConfig,
     time: f64,
 ) -> Vec<EdgeEndpoints> {
-    let mut endpoints = Vec::new();
+    let mut endpoints = Vec::with_capacity(edges.len());
     for edge in edges {
         if edge.hidden {
             continue;

@@ -545,7 +545,7 @@ impl TemporalForceApp {
             .collect();
         for id in nodes_to_remove {
             let nid = format!("n{}", id);
-            self.state.nodes.retain(|n| n.id.0 != nid);
+            self.state.nodes.retain(|n| n.id.as_str() != nid);
             self.simulation.nodes.retain(|n| n.id != id);
             self.active_nodes.remove(&id);
             changed = true;
@@ -604,7 +604,7 @@ impl TemporalForceApp {
             .collect();
         for eid in edges_to_remove {
             let edge_id = format!("e{}", eid);
-            self.state.edges.retain(|e| e.id.0 != edge_id);
+            self.state.edges.retain(|e| e.id.as_str() != edge_id);
             self.active_edges.remove(&eid);
             changed = true;
         }
@@ -658,7 +658,7 @@ impl TemporalForceApp {
         for flow_node in &self.state.nodes {
             if let Some(id) = flow_node
                 .id
-                .0
+                .as_str()
                 .strip_prefix('n')
                 .and_then(|s| s.parse::<usize>().ok())
             {
@@ -676,7 +676,7 @@ impl TemporalForceApp {
     fn sync_positions_to_state(&mut self) {
         for sim in &self.simulation.nodes {
             let nid = format!("n{}", sim.id);
-            if let Some(flow_node) = self.state.nodes.iter_mut().find(|n| n.id.0 == nid) {
+            if let Some(flow_node) = self.state.nodes.iter_mut().find(|n| n.id.as_str() == nid) {
                 if !flow_node.dragging {
                     flow_node.position = egui::pos2(sim.x, sim.y);
                 }

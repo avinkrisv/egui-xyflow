@@ -329,7 +329,7 @@ impl NeuralNetApp {
             let id = format!("{}", i + 1);
             let x = x_start + i as f32 * x_spacing;
 
-            let mut builder = Node::builder(&id)
+            let mut builder = Node::builder(id.as_str())
                 .position(egui::pos2(x, y_pos))
                 .data(layer.clone())
                 .size(node_w, node_h);
@@ -376,18 +376,18 @@ impl NeuralNetApp {
         self.next_id += 1;
 
         // Find the current tail node (no outgoing edge).
-        let sources: Vec<String> = self.state.edges.iter().map(|e| e.source.0.clone()).collect();
+        let sources: Vec<String> = self.state.edges.iter().map(|e| e.source.as_str().to_string()).collect();
         let tail_id = self
             .state
             .nodes
             .iter()
             .rev()
-            .find(|n| !sources.contains(&n.id.0))
-            .map(|n| n.id.0.clone());
+            .find(|n| !sources.iter().any(|s| s == n.id.as_str()))
+            .map(|n| n.id.as_str().to_string());
 
         // Position the new node to the right of the tail.
         let (x, y) = if let Some(ref tid) = tail_id {
-            if let Some(tail) = self.state.nodes.iter().find(|n| n.id.0 == *tid) {
+            if let Some(tail) = self.state.nodes.iter().find(|n| n.id.as_str() == *tid) {
                 (tail.position.x + 200.0, tail.position.y)
             } else {
                 (60.0, 200.0)
@@ -398,7 +398,7 @@ impl NeuralNetApp {
 
         // Add a source handle to the old tail if it does not have one.
         if let Some(ref tid) = tail_id {
-            if let Some(tail) = self.state.nodes.iter_mut().find(|n| n.id.0 == *tid) {
+            if let Some(tail) = self.state.nodes.iter_mut().find(|n| n.id.as_str() == *tid) {
                 let has_source = tail.handles.iter().any(|h| h.handle_type == HandleType::Source);
                 if !has_source {
                     tail.handles.push(NodeHandle::source(Position::Right));
@@ -410,7 +410,7 @@ impl NeuralNetApp {
 
         // Build the new node with a target handle (source may be added later if
         // another layer is appended).
-        let node = Node::builder(&new_id)
+        let node = Node::builder(new_id.as_str())
             .position(egui::pos2(x, y))
             .data(info)
             .handle(NodeHandle::target(Position::Left))
@@ -568,7 +568,7 @@ impl eframe::App for NeuralNetApp {
                     .auto_shrink([false, false])
                     .show(ui, |ui| {
                         for (idx, nid) in ordered.iter().enumerate() {
-                            if let Some(node) = self.state.nodes.iter().find(|n| n.id.0 == *nid) {
+                            if let Some(node) = self.state.nodes.iter().find(|n| n.id.as_str() == *nid) {
                                 let info = &node.data;
                                 ui.horizontal(|ui| {
                                     ui.label(
@@ -625,16 +625,16 @@ fn ordered_layer_ids<ND: Clone>(state: &FlowState<ND, ()>) -> Vec<String> {
     let mut fwd: HashMap<String, String> = HashMap::new();
     let mut has_incoming: std::collections::HashSet<String> = std::collections::HashSet::new();
     for e in &state.edges {
-        fwd.insert(e.source.0.clone(), e.target.0.clone());
-        has_incoming.insert(e.target.0.clone());
+        fwd.insert(e.source.as_str().to_string(), e.target.as_str().to_string());
+        has_incoming.insert(e.target.as_str().to_string());
     }
 
     // Find the head node (no incoming edge).
     let head = state
         .nodes
         .iter()
-        .find(|n| !has_incoming.contains(&n.id.0))
-        .map(|n| n.id.0.clone());
+        .find(|n| !has_incoming.contains(n.id.as_str()))
+        .map(|n| n.id.as_str().to_string());
 
     let mut result = Vec::new();
     if let Some(mut current) = head {
@@ -647,8 +647,9 @@ fn ordered_layer_ids<ND: Clone>(state: &FlowState<ND, ()>) -> Vec<String> {
 
     // Append any orphan nodes not reached by the chain walk.
     for n in &state.nodes {
-        if !result.contains(&n.id.0) {
-            result.push(n.id.0.clone());
+        let id_str = n.id.as_str().to_string();
+        if !result.contains(&id_str) {
+            result.push(id_str);
         }
     }
 

@@ -1,3 +1,7 @@
+use std::sync::Arc;
+
+use smallvec::SmallVec;
+
 use super::node::NodeId;
 use super::position::Position;
 
@@ -76,13 +80,20 @@ pub enum AnchorEndpoint {
 }
 
 /// Unique identifier for an edge in the graph.
+///
+/// Internally backed by `Arc<str>` for O(1) cloning.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct EdgeId(pub String);
+pub struct EdgeId(pub Arc<str>);
 
 impl EdgeId {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new(id: impl Into<Arc<str>>) -> Self {
         Self(id.into())
+    }
+
+    /// Return the underlying string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -94,7 +105,7 @@ impl std::fmt::Display for EdgeId {
 
 impl From<&str> for EdgeId {
     fn from(s: &str) -> Self {
-        Self(s.to_string())
+        Self(Arc::from(s))
     }
 }
 
@@ -185,7 +196,7 @@ fn default_interaction_width() -> f32 {
 }
 
 impl<D: Default> Edge<D> {
-    pub fn new(id: impl Into<String>, source: impl Into<String>, target: impl Into<String>) -> Self {
+    pub fn new(id: impl Into<Arc<str>>, source: impl Into<Arc<str>>, target: impl Into<Arc<str>>) -> Self {
         Self {
             id: EdgeId::new(id),
             source: NodeId::new(source),
@@ -291,9 +302,12 @@ pub struct EdgePosition {
 }
 
 /// Result of edge path calculation.
+///
+/// `points` uses `SmallVec<[Pos2; 8]>` to avoid heap allocation for the
+/// common case (2–7 control points).
 #[derive(Debug, Clone)]
 pub struct EdgePathResult {
-    pub points: Vec<egui::Pos2>,
+    pub points: SmallVec<[egui::Pos2; 8]>,
     pub label_pos: egui::Pos2,
     pub center_x: f32,
     pub center_y: f32,

@@ -1,9 +1,24 @@
+use std::collections::HashMap;
+
 use crate::types::changes::{EdgeChange, NodeChange};
-use crate::types::edge::Edge;
-use crate::types::node::Node;
+use crate::types::edge::{Edge, EdgeId};
+use crate::types::node::{Node, NodeId};
 
 /// Apply a list of node changes to the node vector.
+///
+/// Uses a temporary HashMap index for O(1) lookups instead of O(n) scans.
 pub fn apply_node_changes<D: Clone>(changes: &[NodeChange<D>], nodes: &mut Vec<Node<D>>) {
+    if changes.is_empty() {
+        return;
+    }
+
+    // Build a temporary index: NodeId → position in the vec.
+    // Arc<str>-backed NodeId makes clone O(1).
+    let mut index: HashMap<NodeId, usize> = HashMap::with_capacity(nodes.len());
+    for (i, node) in nodes.iter().enumerate() {
+        index.insert(node.id.clone(), i);
+    }
+
     for change in changes {
         match change {
             NodeChange::Position {
@@ -11,76 +26,96 @@ pub fn apply_node_changes<D: Clone>(changes: &[NodeChange<D>], nodes: &mut Vec<N
                 position,
                 dragging,
             } => {
-                if let Some(node) = nodes.iter_mut().find(|n| n.id == *id) {
+                if let Some(&idx) = index.get(id) {
                     if let Some(pos) = position {
-                        node.position = *pos;
+                        nodes[idx].position = *pos;
                     }
                     if let Some(d) = dragging {
-                        node.dragging = *d;
+                        nodes[idx].dragging = *d;
                     }
                 }
             }
             NodeChange::Dimensions { id, dimensions } => {
-                if let Some(node) = nodes.iter_mut().find(|n| n.id == *id) {
-                    node.measured = *dimensions;
-                    // Also update explicit width/height so that resize is
-                    // reflected even when the node was created with an
-                    // explicit size (width/height take priority over measured
-                    // in InternalNode::width()/height()).
+                if let Some(&idx) = index.get(id) {
+                    nodes[idx].measured = *dimensions;
                     if let Some(d) = dimensions {
-                        node.width = Some(d.width);
-                        node.height = Some(d.height);
+                        nodes[idx].width = Some(d.width);
+                        nodes[idx].height = Some(d.height);
                     }
                 }
             }
             NodeChange::Select { id, selected } => {
-                if let Some(node) = nodes.iter_mut().find(|n| n.id == *id) {
-                    node.selected = *selected;
+                if let Some(&idx) = index.get(id) {
+                    nodes[idx].selected = *selected;
                 }
             }
             NodeChange::Remove { id } => {
                 nodes.retain(|n| n.id != *id);
+                // Rebuild index — removal shifts indices.
+                rebuild_node_index(&mut index, nodes);
             }
-            NodeChange::Add { node, index } => {
-                if let Some(idx) = index {
+            NodeChange::Add { node, index: insert_idx } => {
+                if let Some(idx) = insert_idx {
                     let idx = (*idx).min(nodes.len());
                     nodes.insert(idx, node.clone());
                 } else {
                     nodes.push(node.clone());
                 }
+                // Rebuild index — insertion shifts indices.
+                rebuild_node_index(&mut index, nodes);
             }
             NodeChange::Replace { id, node } => {
-                if let Some(existing) = nodes.iter_mut().find(|n| n.id == *id) {
-                    *existing = node.clone();
+                if let Some(&idx) = index.get(id) {
+                    nodes[idx] = node.clone();
                 }
             }
         }
     }
 }
 
+fn rebuild_node_index<D>(index: &mut HashMap<NodeId, usize>, nodes: &[Node<D>]) {
+    index.clear();
+    for (i, node) in nodes.iter().enumerate() {
+        index.insert(node.id.clone(), i);
+    }
+}
+
 /// Apply a list of edge changes to the edge vector.
+///
+/// Uses a temporary HashMap index for O(1) lookups instead of O(n) scans.
 pub fn apply_edge_changes<D: Clone>(changes: &[EdgeChange<D>], edges: &mut Vec<Edge<D>>) {
+    if changes.is_empty() {
+        return;
+    }
+
+    let mut index: HashMap<EdgeId, usize> = HashMap::with_capacity(edges.len());
+    for (i, edge) in edges.iter().enumerate() {
+        index.insert(edge.id.clone(), i);
+    }
+
     for change in changes {
         match change {
             EdgeChange::Select { id, selected } => {
-                if let Some(edge) = edges.iter_mut().find(|e| e.id == *id) {
-                    edge.selected = *selected;
+                if let Some(&idx) = index.get(id) {
+                    edges[idx].selected = *selected;
                 }
             }
             EdgeChange::Remove { id } => {
                 edges.retain(|e| e.id != *id);
+                rebuild_edge_index(&mut index, edges);
             }
-            EdgeChange::Add { edge, index } => {
-                if let Some(idx) = index {
+            EdgeChange::Add { edge, index: insert_idx } => {
+                if let Some(idx) = insert_idx {
                     let idx = (*idx).min(edges.len());
                     edges.insert(idx, edge.clone());
                 } else {
                     edges.push(edge.clone());
                 }
+                rebuild_edge_index(&mut index, edges);
             }
             EdgeChange::Replace { id, edge } => {
-                if let Some(existing) = edges.iter_mut().find(|e| e.id == *id) {
-                    *existing = edge.clone();
+                if let Some(&idx) = index.get(id) {
+                    edges[idx] = edge.clone();
                 }
             }
             EdgeChange::Anchor {
@@ -88,20 +123,27 @@ pub fn apply_edge_changes<D: Clone>(changes: &[EdgeChange<D>], edges: &mut Vec<E
                 source_anchor,
                 target_anchor,
             } => {
-                if let Some(edge) = edges.iter_mut().find(|e| e.id == *id) {
+                if let Some(&idx) = index.get(id) {
                     if let Some(sa) = source_anchor {
-                        edge.source_anchor = *sa;
+                        edges[idx].source_anchor = *sa;
                     }
                     if let Some(ta) = target_anchor {
-                        edge.target_anchor = *ta;
+                        edges[idx].target_anchor = *ta;
                     }
                 }
             }
             EdgeChange::Style { id, style } => {
-                if let Some(edge) = edges.iter_mut().find(|e| e.id == *id) {
-                    edge.style = *style;
+                if let Some(&idx) = index.get(id) {
+                    edges[idx].style = *style;
                 }
             }
         }
+    }
+}
+
+fn rebuild_edge_index<D>(index: &mut HashMap<EdgeId, usize>, edges: &[Edge<D>]) {
+    index.clear();
+    for (i, edge) in edges.iter().enumerate() {
+        index.insert(edge.id.clone(), i);
     }
 }

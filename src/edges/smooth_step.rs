@@ -1,3 +1,5 @@
+use smallvec::SmallVec;
+
 use crate::types::edge::{EdgePathResult, EdgePosition};
 use crate::types::position::Position;
 
@@ -26,7 +28,7 @@ pub fn get_smooth_step_path(
     let s_horizontal = pos.source_pos.is_horizontal();
     let t_horizontal = pos.target_pos.is_horizontal();
 
-    let mut points = Vec::new();
+    let mut points = SmallVec::<[egui::Pos2; 8]>::new();
     points.push(source);
     points.push(s);
 
@@ -77,7 +79,7 @@ fn offset_point(p: egui::Pos2, position: Position, offset: f32) -> egui::Pos2 {
     }
 }
 
-fn add_rounded_corner(points: &mut Vec<egui::Pos2>, corner: egui::Pos2, _border_radius: f32) {
+fn add_rounded_corner(points: &mut SmallVec<[egui::Pos2; 8]>, corner: egui::Pos2, _border_radius: f32) {
     // For simplicity, add the corner point directly.
     // The rendering step will handle smoothing with PathShape.
     points.push(corner);

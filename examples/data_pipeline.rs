@@ -79,8 +79,8 @@ struct PipelineValidator {
 
 impl ConnectionValidator for PipelineValidator {
     fn is_valid_connection(&self, connection: &Connection, _existing_edges: &[EdgeInfo<'_>]) -> bool {
-        let source_id = &connection.source.0;
-        let target_id = &connection.target.0;
+        let source_id = connection.source.as_str();
+        let target_id = connection.target.as_str();
 
         // No self-connections.
         if source_id == target_id {
@@ -283,7 +283,7 @@ impl PipelineApp {
         let node_labels: std::collections::HashMap<String, String> = state
             .nodes
             .iter()
-            .map(|n| (n.id.0.clone(), n.data.clone()))
+            .map(|n| (n.id.to_string(), n.data.clone()))
             .collect();
 
         Self {
@@ -309,7 +309,7 @@ impl PipelineApp {
         let y_offset = (self.next_node_id as f32) * 30.0;
         let pos = egui::pos2(base_x, 450.0 + y_offset);
 
-        let mut builder = Node::builder(&id)
+        let mut builder = Node::builder(id.as_str())
             .position(pos)
             .data(label.to_string())
             .size(140.0, 44.0);
@@ -343,17 +343,17 @@ impl PipelineApp {
 
         // Initialize all nodes with zero counts.
         for node in &self.state.nodes {
-            counts.entry(node.id.0.clone()).or_insert((0, 0));
+            counts.entry(node.id.to_string()).or_insert((0, 0));
         }
 
         // Tally edges.
         for edge in &self.state.edges {
             counts
-                .entry(edge.source.0.clone())
+                .entry(edge.source.to_string())
                 .or_insert((0, 0))
                 .1 += 1; // outgoing
             counts
-                .entry(edge.target.0.clone())
+                .entry(edge.target.to_string())
                 .or_insert((0, 0))
                 .0 += 1; // incoming
         }
@@ -458,8 +458,8 @@ impl eframe::App for PipelineApp {
 
                 for node in &self.state.nodes {
                     let label = &node.data;
-                    let (inc, out) = counts.get(&node.id.0).copied().unwrap_or((0, 0));
-                    let entry = (node.id.0.clone(), label.clone(), inc, out);
+                    let (inc, out) = counts.get(node.id.as_str()).copied().unwrap_or((0, 0));
+                    let entry = (node.id.to_string(), label.clone(), inc, out);
                     match node_category(label) {
                         NodeCategory::Source => sources.push(entry),
                         NodeCategory::Transform => transforms.push(entry),
@@ -546,7 +546,7 @@ impl eframe::App for PipelineApp {
 
                 // If nodes were deleted, remove them from the validator map.
                 for nid in &events.nodes_deleted {
-                    self.validator.node_labels.remove(&nid.0);
+                    self.validator.node_labels.remove(nid.as_str());
                 }
             });
     }

@@ -1,14 +1,23 @@
+use std::sync::Arc;
+
 use super::handle::{Handle, NodeHandle};
 use super::position::{CoordinateExtent, Dimensions, NodeOrigin, Position};
 
 /// Unique identifier for a node in the graph.
+///
+/// Internally backed by `Arc<str>` for O(1) cloning.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct NodeId(pub String);
+pub struct NodeId(pub Arc<str>);
 
 impl NodeId {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new(id: impl Into<Arc<str>>) -> Self {
         Self(id.into())
+    }
+
+    /// Return the underlying string slice.
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -20,13 +29,13 @@ impl std::fmt::Display for NodeId {
 
 impl From<&str> for NodeId {
     fn from(s: &str) -> Self {
-        Self(s.to_string())
+        Self(Arc::from(s))
     }
 }
 
 impl From<String> for NodeId {
     fn from(s: String) -> Self {
-        Self(s)
+        Self(Arc::from(s))
     }
 }
 
@@ -77,7 +86,7 @@ pub struct Node<D = ()> {
 }
 
 impl<D: Default> Node<D> {
-    pub fn builder(id: impl Into<String>) -> NodeBuilder<D> {
+    pub fn builder(id: impl Into<Arc<str>>) -> NodeBuilder<D> {
         NodeBuilder::new(id)
     }
 }
@@ -88,7 +97,7 @@ pub struct NodeBuilder<D = ()> {
 }
 
 impl<D: Default> NodeBuilder<D> {
-    pub fn new(id: impl Into<String>) -> Self {
+    pub fn new(id: impl Into<Arc<str>>) -> Self {
         Self {
             node: Node {
                 id: NodeId::new(id),
@@ -142,7 +151,7 @@ impl<D: Default> NodeBuilder<D> {
         self
     }
 
-    pub fn parent(mut self, parent_id: impl Into<String>) -> Self {
+    pub fn parent(mut self, parent_id: impl Into<Arc<str>>) -> Self {
         self.node.parent_id = Some(NodeId::new(parent_id));
         self
     }

@@ -154,8 +154,8 @@ struct StateMachineValidator;
 
 impl ConnectionValidator for StateMachineValidator {
     fn is_valid_connection(&self, connection: &Connection, _existing_edges: &[EdgeInfo<'_>]) -> bool {
-        let source = connection.source.0.as_str();
-        let target = connection.target.0.as_str();
+        let source = connection.source.as_str();
+        let target = connection.target.as_str();
 
         // Only allow connections that match one of our defined transitions.
         transitions()
@@ -228,7 +228,7 @@ impl NodeWidget<String> for StateNodeWidget {
         _hovered: bool,
         _transform: &Transform,
     ) {
-        let state = State::from_node_id(&node.id.0).unwrap_or(State::Idle);
+        let state = State::from_node_id(node.id.as_str()).unwrap_or(State::Idle);
         let bg = self.color_for(state);
         let border = self.border_for(state, node.selected);
         let text_color = self.text_color_for(state);
@@ -440,14 +440,14 @@ impl StateMachineApp {
             let elapsed = time - self.animation_start;
             if elapsed > self.animation_duration {
                 // Animation done -- turn off the animated flag
-                if let Some(edge) = self.state.edges.iter_mut().find(|e| e.id.0 == *eid) {
+                if let Some(edge) = self.state.edges.iter_mut().find(|e| e.id.as_str() == *eid) {
                     edge.animated = false;
                 }
                 self.animated_edge = None;
                 self.state.has_animated_edges = self.state.edges.iter().any(|e| e.animated);
             } else {
                 // Ensure the edge is animated
-                if let Some(edge) = self.state.edges.iter_mut().find(|e| e.id.0 == *eid) {
+                if let Some(edge) = self.state.edges.iter_mut().find(|e| e.id.as_str() == *eid) {
                     if !edge.animated {
                         edge.animated = true;
                         self.state.has_animated_edges = true;
@@ -639,7 +639,7 @@ impl eframe::App for StateMachineApp {
                         ));
                     }
                     for id in &events.nodes_clicked {
-                        if let Some(s) = State::from_node_id(&id.0) {
+                        if let Some(s) = State::from_node_id(id.as_str()) {
                             self.log(format!("clicked state: {}", s.name()));
                         }
                     }

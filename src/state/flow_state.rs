@@ -26,6 +26,8 @@ pub struct FlowState<ND = (), ED = ()> {
     pub viewport_animation: Option<ViewportAnimation>,
     /// Tracks whether any edge is animated (for repaint requests).
     pub has_animated_edges: bool,
+    /// Cached z-sorted node IDs. Invalidated on structural changes.
+    sorted_ids_cache: Option<Vec<NodeId>>,
 }
 
 impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
@@ -40,6 +42,7 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
             config,
             viewport_animation: None,
             has_animated_edges: false,
+            sorted_ids_cache: None,
         }
     }
 
@@ -56,8 +59,67 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
     }
 
     pub fn apply_node_changes(&mut self, changes: &[NodeChange<ND>]) {
-        apply_node_changes(changes, &mut self.nodes);
-        self.rebuild_lookup();
+        let has_structural = changes.iter().any(|c| {
+            matches!(
+                c,
+                NodeChange::Add { .. } | NodeChange::Remove { .. } | NodeChange::Replace { .. }
+            )
+        });
+
+        if has_structural {
+            // Structural changes require a full rebuild.
+            apply_node_changes(changes, &mut self.nodes);
+            self.rebuild_lookup();
+        } else {
+            // Non-structural (Position, Dimensions, Select): update nodes vec
+            // and patch the lookup in place — avoids cloning all N nodes.
+            apply_node_changes(changes, &mut self.nodes);
+            self.apply_incremental_lookup_updates(changes);
+        }
+    }
+
+    /// Apply non-structural changes to the lookup without a full rebuild.
+    fn apply_incremental_lookup_updates(&mut self, changes: &[NodeChange<ND>]) {
+        let mut needs_parent_update = false;
+
+        for change in changes {
+            match change {
+                NodeChange::Position { id, position, dragging } => {
+                    if let Some(internal) = self.node_lookup.get_mut(id) {
+                        if let Some(pos) = position {
+                            internal.node.position = *pos;
+                            internal.internals.position_absolute = *pos;
+                            needs_parent_update = true;
+                        }
+                        if let Some(d) = dragging {
+                            internal.node.dragging = *d;
+                        }
+                    }
+                }
+                NodeChange::Dimensions { id, dimensions } => {
+                    if let Some(internal) = self.node_lookup.get_mut(id) {
+                        internal.node.measured = *dimensions;
+                        if let Some(d) = dimensions {
+                            internal.node.width = Some(d.width);
+                            internal.node.height = Some(d.height);
+                        }
+                        // Rebuild handle bounds since dimensions changed.
+                        internal.internals.handle_bounds =
+                            build_handle_bounds(&internal.node, &self.config);
+                    }
+                }
+                NodeChange::Select { id, selected } => {
+                    if let Some(internal) = self.node_lookup.get_mut(id) {
+                        internal.node.selected = *selected;
+                    }
+                }
+                _ => {} // Structural changes handled by full rebuild path
+            }
+        }
+
+        if needs_parent_update {
+            self.update_absolute_positions();
+        }
     }
 
     pub fn apply_edge_changes(&mut self, changes: &[EdgeChange<ED>]) {
@@ -67,6 +129,7 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
 
     /// Rebuild internal node lookup from user nodes.
     pub fn rebuild_lookup(&mut self) {
+        self.sorted_ids_cache = None; // invalidate cache
         self.node_lookup.clear();
         for node in &self.nodes {
             let handle_bounds = build_handle_bounds(node, &self.config);
@@ -85,8 +148,13 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
 
     /// Compute absolute positions for child nodes.
     fn update_absolute_positions(&mut self) {
-        // Collect parent relationships
-        let parent_map: HashMap<NodeId, NodeId> = self
+        // Fast path: skip if no node has a parent.
+        if !self.nodes.iter().any(|n| n.parent_id.is_some()) {
+            return;
+        }
+
+        // Collect parent relationships.
+        let parent_map: Vec<(NodeId, NodeId)> = self
             .nodes
             .iter()
             .filter_map(|n| n.parent_id.as_ref().map(|pid| (n.id.clone(), pid.clone())))
@@ -94,16 +162,16 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
 
         // Pre-collect parent data (position_absolute + z) to avoid simultaneous
         // mutable + immutable borrows of node_lookup inside the loop.
-        let parent_data: HashMap<NodeId, (egui::Pos2, i32)> = parent_map
-            .values()
-            .filter_map(|pid| {
+        let parent_data: HashMap<&NodeId, (egui::Pos2, i32)> = parent_map
+            .iter()
+            .filter_map(|(_, pid)| {
                 self.node_lookup
                     .get(pid)
-                    .map(|p| (pid.clone(), (p.internals.position_absolute, p.internals.z)))
+                    .map(|p| (pid, (p.internals.position_absolute, p.internals.z)))
             })
             .collect();
 
-        // Resolve absolute positions (simple single-level parent support)
+        // Resolve absolute positions (simple single-level parent support).
         for (child_id, parent_id) in &parent_map {
             if let Some(&(parent_pos, parent_z)) = parent_data.get(parent_id) {
                 if let Some(child) = self.node_lookup.get_mut(child_id) {
@@ -181,21 +249,13 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
     ///
     /// Does nothing when no nodes are selected.
     pub fn fit_selected_nodes(&mut self, canvas_rect: egui::Rect, padding: f32, current_time: f64) {
-        use crate::graph::utils::get_nodes_bounds;
-
-        // Build a temporary lookup of only the selected nodes.
-        let selected_lookup: HashMap<NodeId, _> = self
+        // Compute bounds directly without cloning into a temporary HashMap.
+        let bounds = self
             .node_lookup
-            .iter()
-            .filter(|(_, n)| n.node.selected && !n.node.hidden)
-            .map(|(id, n)| (id.clone(), n.clone()))
-            .collect();
+            .values()
+            .filter(|n| n.node.selected && !n.node.hidden)
+            .fold(egui::Rect::NOTHING, |acc, n| acc.union(n.rect()));
 
-        if selected_lookup.is_empty() {
-            return;
-        }
-
-        let bounds = get_nodes_bounds(&selected_lookup);
         if bounds == egui::Rect::NOTHING {
             return;
         }
@@ -303,9 +363,18 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
     }
 
     /// Get sorted node IDs by z-index (lowest first).
-    pub fn sorted_node_ids(&self) -> Vec<NodeId> {
-        let mut ids: Vec<_> = self.node_lookup.keys().cloned().collect();
+    ///
+    /// Uses an internal cache invalidated on structural changes
+    /// (add/remove/replace). Non-structural changes (position, select)
+    /// reuse the cached ordering.
+    pub fn sorted_node_ids(&mut self) -> Vec<NodeId> {
+        if let Some(ref cached) = self.sorted_ids_cache {
+            return cached.clone();
+        }
+        let mut ids = Vec::with_capacity(self.node_lookup.len());
+        ids.extend(self.node_lookup.keys().cloned());
         ids.sort_by_key(|id| self.node_lookup.get(id).map(|n| n.internals.z).unwrap_or(0));
+        self.sorted_ids_cache = Some(ids.clone());
         ids
     }
 }
@@ -315,9 +384,6 @@ fn build_handle_bounds<D>(node: &Node<D>, config: &FlowConfig) -> NodeHandleBoun
     let node_w = node.width.unwrap_or(config.default_node_width);
     let node_h = node.height.unwrap_or(config.default_node_height);
     let handle_size = config.handle_size;
-
-    let mut source = Vec::new();
-    let mut target = Vec::new();
 
     // Count handles per position for even spacing
     let source_handles: Vec<_> = node
@@ -330,6 +396,9 @@ fn build_handle_bounds<D>(node: &Node<D>, config: &FlowConfig) -> NodeHandleBoun
         .iter()
         .filter(|h| h.handle_type == HandleType::Target)
         .collect();
+
+    let mut source = Vec::with_capacity(source_handles.len());
+    let mut target = Vec::with_capacity(target_handles.len());
 
     for nh in source_handles.iter() {
         let count = source_handles
@@ -344,7 +413,7 @@ fn build_handle_bounds<D>(node: &Node<D>, config: &FlowConfig) -> NodeHandleBoun
         let (x, y) = compute_handle_offset(nh.position, node_w, node_h, handle_size, count, idx);
         source.push(Handle {
             id: nh.id.clone(),
-            node_id: node.id.0.clone(),
+            node_id: node.id.0.clone(), // Arc<str> clone — O(1)
             x,
             y,
             position: nh.position,
@@ -367,7 +436,7 @@ fn build_handle_bounds<D>(node: &Node<D>, config: &FlowConfig) -> NodeHandleBoun
         let (x, y) = compute_handle_offset(nh.position, node_w, node_h, handle_size, count, idx);
         target.push(Handle {
             id: nh.id.clone(),
-            node_id: node.id.0.clone(),
+            node_id: node.id.0.clone(), // Arc<str> clone — O(1)
             x,
             y,
             position: nh.position,
