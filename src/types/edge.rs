@@ -1,6 +1,43 @@
 use super::node::NodeId;
 use super::position::Position;
 
+/// Per-edge visual style overrides. When set on an [`Edge`], these take
+/// priority over the global `FlowConfig` edge colour / stroke settings.
+/// Per-edge visual style overrides. When set on an [`Edge`], these take
+/// priority over the global `FlowConfig` edge colour / stroke settings.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct EdgeStyle {
+    /// Override edge colour (when not selected).
+    pub color: Option<egui::Color32>,
+    /// Override edge colour when selected.
+    pub selected_color: Option<egui::Color32>,
+    /// Override stroke width (before the 2× selected multiplier).
+    pub stroke_width: Option<f32>,
+    /// When `Some`, a glow effect is drawn behind the edge.
+    pub glow: Option<EdgeGlow>,
+}
+
+/// Configuration for an edge glow effect — a wider, semi-transparent stroke
+/// painted underneath the main edge stroke.
+#[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct EdgeGlow {
+    /// Colour of the glow.  A semi-transparent colour works best
+    /// (e.g. `Color32::from_rgba_unmultiplied(59, 130, 246, 80)`).
+    pub color: egui::Color32,
+    /// Total width of the glow stroke.  The glow is drawn first, so the main
+    /// edge stroke paints on top.  Typical values: 8.0–20.0.
+    pub width: f32,
+}
+
+impl EdgeGlow {
+    /// Create a new glow configuration.
+    pub fn new(color: egui::Color32, width: f32) -> Self {
+        Self { color, width }
+    }
+}
+
 /// A user-defined edge endpoint position on a node's border.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -38,6 +75,7 @@ pub enum AnchorEndpoint {
     Target,
 }
 
+/// Unique identifier for an edge in the graph.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EdgeId(pub String);
@@ -60,29 +98,34 @@ impl From<&str> for EdgeId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+/// The path algorithm used to draw an edge.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum EdgeType {
+    /// A single straight line segment.
     Straight,
+    /// A cubic bezier curve (default).
+    #[default]
     Bezier,
+    /// An orthogonal path with rounded corners.
     SmoothStep,
+    /// A simplified bezier with fewer control points.
     SimpleBezier,
+    /// An orthogonal path with sharp 90-degree corners.
     Step,
 }
 
-impl Default for EdgeType {
-    fn default() -> Self {
-        EdgeType::Bezier
-    }
-}
-
+/// The shape of an arrow marker at an edge endpoint.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum MarkerType {
+    /// Open arrow head (two lines).
     Arrow,
+    /// Closed (filled) arrow head.
     ArrowClosed,
 }
 
+/// Arrow marker configuration for an edge endpoint.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EdgeMarker {
@@ -93,6 +136,10 @@ pub struct EdgeMarker {
     pub stroke_width: Option<f32>,
 }
 
+/// An edge connecting two nodes, parameterised over user data `D`.
+///
+/// Create edges with [`Edge::new`] and chain builder methods for style,
+/// animation, markers, anchors, and glow effects.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Edge<D = ()> {
@@ -128,6 +175,9 @@ pub struct Edge<D = ()> {
     /// dragging is disabled for this edge. `None` falls back to the global
     /// config.
     pub anchors_draggable: Option<bool>,
+    /// Per-edge visual style overrides (colour, stroke width, glow).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub style: Option<EdgeStyle>,
 }
 
 fn default_interaction_width() -> f32 {
@@ -156,6 +206,7 @@ impl<D: Default> Edge<D> {
             source_anchor: None,
             target_anchor: None,
             anchors_draggable: None,
+            style: None,
         }
     }
 }
@@ -194,6 +245,36 @@ impl<D> Edge<D> {
 
     pub fn anchors_draggable(mut self, draggable: bool) -> Self {
         self.anchors_draggable = Some(draggable);
+        self
+    }
+
+    /// Set a per-edge visual style override.
+    pub fn style(mut self, style: EdgeStyle) -> Self {
+        self.style = Some(style);
+        self
+    }
+
+    /// Set the edge colour (when not selected).
+    pub fn color(mut self, color: egui::Color32) -> Self {
+        self.style.get_or_insert_with(EdgeStyle::default).color = Some(color);
+        self
+    }
+
+    /// Set the edge colour when selected.
+    pub fn selected_color(mut self, color: egui::Color32) -> Self {
+        self.style.get_or_insert_with(EdgeStyle::default).selected_color = Some(color);
+        self
+    }
+
+    /// Set the edge stroke width.
+    pub fn stroke_width(mut self, width: f32) -> Self {
+        self.style.get_or_insert_with(EdgeStyle::default).stroke_width = Some(width);
+        self
+    }
+
+    /// Add a glow effect behind the edge.
+    pub fn glow(mut self, color: egui::Color32, width: f32) -> Self {
+        self.style.get_or_insert_with(EdgeStyle::default).glow = Some(EdgeGlow::new(color, width));
         self
     }
 }

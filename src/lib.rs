@@ -67,14 +67,14 @@ pub use config::{BackgroundVariant, FlowConfig, ZIndexMode};
 pub use types::changes::{EdgeChange, NodeChange};
 pub use types::connection::{Connection, ConnectionMode, ConnectionState, EdgeInfo};
 pub use types::edge::{
-    AnchorEndpoint, Edge, EdgeAnchor, EdgeId, EdgeMarker, EdgePathResult, EdgePosition, EdgeType,
-    MarkerType,
+    AnchorEndpoint, Edge, EdgeAnchor, EdgeGlow, EdgeId, EdgeMarker, EdgePathResult, EdgePosition,
+    EdgeStyle, EdgeType, MarkerType,
 };
 pub use types::handle::{Handle, HandleType, NodeHandle};
 pub use types::node::{
     InternalNode, Node, NodeBuilder, NodeExtent, NodeHandleBounds, NodeId, NodeInternals,
 };
-pub use types::position::{CoordinateExtent, Dimensions, NodeOrigin, SnapGrid, Transform};
+pub use types::position::{CoordinateExtent, Dimensions, NodeOrigin, Position, SnapGrid, Transform};
 pub use types::viewport::{PanOnScrollMode, SelectionMode, Viewport};
 
 // State
@@ -122,7 +122,9 @@ pub mod prelude {
 
     pub use crate::types::changes::{EdgeChange, NodeChange};
     pub use crate::types::connection::{Connection, ConnectionMode, EdgeInfo};
-    pub use crate::types::edge::{AnchorEndpoint, Edge, EdgeAnchor, EdgeId, EdgeType, MarkerType};
+    pub use crate::types::edge::{
+        AnchorEndpoint, Edge, EdgeAnchor, EdgeGlow, EdgeId, EdgeStyle, EdgeType, MarkerType,
+    };
     pub use crate::types::handle::{HandleType, NodeHandle};
     pub use crate::types::node::{Node, NodeExtent, NodeId};
     pub use crate::types::position::{CoordinateExtent, Dimensions, Position, Transform};

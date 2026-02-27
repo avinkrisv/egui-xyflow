@@ -90,11 +90,16 @@ pub fn apply_edge_changes<D: Clone>(changes: &[EdgeChange<D>], edges: &mut Vec<E
             } => {
                 if let Some(edge) = edges.iter_mut().find(|e| e.id == *id) {
                     if let Some(sa) = source_anchor {
-                        edge.source_anchor = sa.clone();
+                        edge.source_anchor = *sa;
                     }
                     if let Some(ta) = target_anchor {
-                        edge.target_anchor = ta.clone();
+                        edge.target_anchor = *ta;
                     }
+                }
+            }
+            EdgeChange::Style { id, style } => {
+                if let Some(edge) = edges.iter_mut().find(|e| e.id == *id) {
+                    edge.style = *style;
                 }
             }
         }

@@ -88,6 +88,8 @@ impl FlowApp {
             show_background: true,
             background_variant: BackgroundVariant::Dots,
             show_minimap: true,
+            edge_anchors_draggable: true,
+            node_bg_opacity: 0.3,
             ..FlowConfig::default()
         };
 
@@ -147,12 +149,15 @@ impl FlowApp {
             Edge::new("e1-2", "1", "2")
                 .edge_type(EdgeType::Bezier)
                 .animated(true)
+                .color(egui::Color32::from_rgb(59, 130, 246))
+                .glow(egui::Color32::from_rgba_unmultiplied(59, 130, 246, 60), 12.0)
                 .marker_end_arrow(),
         );
 
         state.add_edge(
             Edge::new("e2-3", "2", "3")
                 .edge_type(EdgeType::SmoothStep)
+                .glow(egui::Color32::from_rgba_unmultiplied(34, 197, 94, 50), 10.0)
                 .marker_end_arrow(),
         );
 

@@ -16,6 +16,16 @@ pub trait NodeWidget<D> {
     );
 }
 
+/// Apply `config.node_bg_opacity` to a colour's alpha channel.
+fn apply_bg_opacity(color: egui::Color32, opacity: f32) -> egui::Color32 {
+    if opacity >= 1.0 {
+        return color;
+    }
+    let [r, g, b, a] = color.to_array();
+    let new_a = (a as f32 * opacity.clamp(0.0, 1.0)) as u8;
+    egui::Color32::from_rgba_unmultiplied(r, g, b, new_a)
+}
+
 /// Default node renderer: rounded rectangle with label.
 pub struct DefaultNodeWidget;
 
@@ -36,11 +46,14 @@ impl NodeWidget<String> for DefaultNodeWidget {
         _hovered: bool,
         _transform: &Transform,
     ) {
-        let bg = if node.selected {
-            config.node_selected_bg_color
-        } else {
-            config.node_bg_color
-        };
+        let bg = apply_bg_opacity(
+            if node.selected {
+                config.node_selected_bg_color
+            } else {
+                config.node_bg_color
+            },
+            config.node_bg_opacity,
+        );
         let border = if node.selected {
             config.node_selected_border_color
         } else {
@@ -111,11 +124,14 @@ impl NodeWidget<()> for UnitNodeWidget {
         _hovered: bool,
         _transform: &Transform,
     ) {
-        let bg = if node.selected {
-            config.node_selected_bg_color
-        } else {
-            config.node_bg_color
-        };
+        let bg = apply_bg_opacity(
+            if node.selected {
+                config.node_selected_bg_color
+            } else {
+                config.node_bg_color
+            },
+            config.node_bg_opacity,
+        );
         let border = if node.selected {
             config.node_selected_border_color
         } else {

@@ -1,5 +1,5 @@
 //! Node lookup helpers — query functions that operate on the
-//! `HashMap<NodeId, InternalNode<D>>` maintained by [`FlowState`].
+//! `HashMap<NodeId, InternalNode<D>>` maintained by [`crate::state::flow_state::FlowState`].
 //!
 //! All functions here are pure (they take the lookup by reference and return
 //! data); mutation lives in [`super::flow_state`].

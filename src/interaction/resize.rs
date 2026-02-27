@@ -11,7 +11,6 @@
 //! are hidden to avoid ambiguity.
 
 use crate::config::FlowConfig;
-use crate::graph::node_position::flow_to_screen;
 use crate::types::changes::NodeChange;
 use crate::types::node::{InternalNode, NodeId};
 use crate::types::position::Transform;
@@ -100,22 +99,22 @@ impl ResizeHandleKind {
 
 /// Transient state kept while a resize drag is in progress.
 #[derive(Debug, Clone)]
-pub struct ResizeState {
+pub(crate) struct ResizeState {
     /// Which node is being resized.
-    pub node_id: NodeId,
+    pub(crate) node_id: NodeId,
     /// Which of the eight handles is being dragged.
-    pub handle: ResizeHandleKind,
+    pub(crate) handle: ResizeHandleKind,
     /// Node position (flow space) at the start of the resize.
-    pub initial_pos: egui::Pos2,
+    pub(crate) initial_pos: egui::Pos2,
     /// Node dimensions (flow space) at the start of the resize.
-    pub initial_size: egui::Vec2,
+    pub(crate) initial_size: egui::Vec2,
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Handle size constants
 // ─────────────────────────────────────────────────────────────────────────────
 
-pub const HANDLE_SIZE: f32 = 8.0;
+pub(crate) const HANDLE_SIZE: f32 = 8.0;
 
 const MIN_NODE_SIZE: f32 = 20.0;
 
@@ -132,7 +131,7 @@ const MIN_NODE_SIZE: f32 = 20.0;
 /// * Zero or more [`NodeChange`] values to apply to `FlowState`.
 /// * Whether the cursor should be overridden (non-`None` → cursor to use).
 #[allow(clippy::too_many_arguments)]
-pub fn render_and_handle_resize<D>(
+pub(crate) fn render_and_handle_resize<D>(
     ui: &mut egui::Ui,
     painter: &egui::Painter,
     node_id: &NodeId,
@@ -287,7 +286,7 @@ pub fn render_and_handle_resize<D>(
 /// is resizable (i.e. it has explicit or default `selectable = true`).
 ///
 /// Used by the canvas to decide whether resize handles should be shown.
-pub fn should_show_resize_handles<D>(
+pub(crate) fn should_show_resize_handles<D>(
     node_lookup: &std::collections::HashMap<NodeId, InternalNode<D>>,
 ) -> Option<NodeId> {
     let selected: Vec<&NodeId> = node_lookup
@@ -301,14 +300,4 @@ pub fn should_show_resize_handles<D>(
     } else {
         None
     }
-}
-
-/// Compute the screen-space rect for a node, taking the transform into account.
-pub fn node_screen_rect(node: &InternalNode<impl Sized>, transform: &Transform) -> egui::Rect {
-    let origin = flow_to_screen(node.internals.position_absolute, transform);
-    let size = egui::vec2(
-        node.width() * transform.scale,
-        node.height() * transform.scale,
-    );
-    egui::Rect::from_min_size(origin, size)
 }

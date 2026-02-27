@@ -4,7 +4,7 @@ use crate::types::position::Position;
 ///
 /// For `Position::Center`, an optional `from` point can be provided
 /// so the arrow points along the edge direction instead of a fixed axis.
-pub fn render_arrow(
+pub(crate) fn render_arrow(
     painter: &egui::Painter,
     tip: egui::Pos2,
     direction: Position,
@@ -16,7 +16,7 @@ pub fn render_arrow(
 
 /// Render an arrow marker, optionally using a `from` point to derive direction
 /// when `direction` is `Position::Center`.
-pub fn render_arrow_from(
+pub(crate) fn render_arrow_from(
     painter: &egui::Painter,
     tip: egui::Pos2,
     direction: Position,

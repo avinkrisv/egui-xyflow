@@ -4,22 +4,35 @@ use crate::types::edge::EdgeType;
 use crate::types::position::{CoordinateExtent, NodeOrigin, Position, SnapGrid};
 use crate::types::viewport::{PanOnScrollMode, SelectionMode};
 
+/// The visual pattern drawn on the canvas background.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BackgroundVariant {
+    /// A grid of dots.
     Dots,
+    /// Horizontal and vertical lines.
     Lines,
+    /// Plus-shaped crosses at grid intersections.
     Cross,
 }
 
+/// How node z-index is determined.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum ZIndexMode {
+    /// Selected nodes are elevated automatically.
     Auto,
+    /// Nodes render in insertion order.
     Basic,
+    /// Nodes render in explicit `z_index` order.
     Manual,
 }
 
+/// Configuration for the flow canvas.
+///
+/// Controls viewport behaviour, node defaults, connection handling, edge
+/// styling, background, grid snapping, handle appearance, animation,
+/// and contact indicators.  All fields have sensible defaults.
 #[derive(Clone)]
 pub struct FlowConfig {
     pub min_zoom: f32,
@@ -83,6 +96,10 @@ pub struct FlowConfig {
     pub node_selected_border_color: egui::Color32,
     pub node_border_width: f32,
     pub node_corner_radius: f32,
+    /// Opacity multiplier (0.0–1.0) applied to node background fills in the
+    /// default node widgets.  Values below 1.0 let edges underneath show
+    /// through the node body.  Default: `1.0` (fully opaque).
+    pub node_bg_opacity: f32,
     pub node_text_color: egui::Color32,
     /// Default position where source edges connect to a node when no explicit
     /// handle is specified.  Set to [`Position::Center`] for force-directed or
@@ -95,6 +112,17 @@ pub struct FlowConfig {
     /// When `true`, users can drag edge endpoints to reposition them on the
     /// node border. The new position is stored as an `EdgeAnchor` on the edge.
     pub edge_anchors_draggable: bool,
+    /// When `true`, small circles are drawn at edge source/target connection
+    /// points.  These serve as visual indicators and grab handles for anchor
+    /// dragging.
+    pub show_edge_contact_indicators: bool,
+    /// Radius of the edge contact indicator circle (in logical pixels, before
+    /// zoom scaling).
+    pub edge_contact_indicator_radius: f32,
+    /// Fill colour of the edge contact indicator.
+    pub edge_contact_indicator_color: egui::Color32,
+    /// Fill colour when the pointer hovers over a contact indicator.
+    pub edge_contact_indicator_hover_color: egui::Color32,
 }
 
 impl Default for FlowConfig {
@@ -156,10 +184,15 @@ impl Default for FlowConfig {
             node_selected_border_color: egui::Color32::from_rgb(59, 130, 246),
             node_border_width: 1.0,
             node_corner_radius: 5.0,
+            node_bg_opacity: 1.0,
             node_text_color: egui::Color32::from_rgb(50, 50, 50),
             default_source_position: Position::Right,
             default_target_position: Position::Left,
             edge_anchors_draggable: false,
+            show_edge_contact_indicators: true,
+            edge_contact_indicator_radius: 4.0,
+            edge_contact_indicator_color: egui::Color32::from_rgb(177, 177, 183),
+            edge_contact_indicator_hover_color: egui::Color32::from_rgb(59, 130, 246),
         }
     }
 }

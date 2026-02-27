@@ -5,7 +5,7 @@ use crate::types::viewport::SelectionMode;
 use std::collections::HashMap;
 
 /// Get nodes inside a selection rectangle.
-pub fn get_nodes_inside<D>(
+pub(crate) fn get_nodes_inside<D>(
     node_lookup: &HashMap<NodeId, InternalNode<D>>,
     selection_rect: egui::Rect,
     transform: &Transform,

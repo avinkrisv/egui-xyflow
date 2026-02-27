@@ -1,6 +1,6 @@
 //! Per-frame event reporting for `FlowCanvas`.
 //!
-//! [`FlowCanvas::show`] returns a [`FlowEvents`] value that accumulates every
+//! [`crate::render::canvas::FlowCanvas::show`] returns a [`FlowEvents`] value that accumulates every
 //! notable thing that happened during that frame.  Because `show` is called
 //! once per egui frame you can simply inspect the struct immediately after the
 //! call — no callbacks or channels needed.

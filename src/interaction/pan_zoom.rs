@@ -3,12 +3,12 @@ use crate::types::position::CoordinateExtent;
 use crate::types::viewport::Viewport;
 
 /// Result of a pan/zoom input frame.
-pub struct PanZoomResult {
+pub(crate) struct PanZoomResult {
     /// True if the viewport was mutated (pan or instant zoom).
-    pub changed: bool,
+    pub(crate) changed: bool,
     /// If set, the canvas should start an animated zoom toward this screen
     /// position with this factor (used for double-click).
-    pub animate_zoom: Option<(egui::Pos2, f32)>,
+    pub(crate) animate_zoom: Option<(egui::Pos2, f32)>,
 }
 
 /// Handle pan/zoom input from egui.
@@ -21,7 +21,7 @@ pub struct PanZoomResult {
 /// After every mutation the viewport translation is clamped to
 /// [`FlowConfig::translate_extent`] so the user cannot pan outside the
 /// configured content boundary.
-pub fn handle_pan_zoom(
+pub(crate) fn handle_pan_zoom(
     ui: &egui::Ui,
     response: &egui::Response,
     viewport: &mut Viewport,
@@ -128,7 +128,7 @@ pub fn handle_pan_zoom(
 }
 
 /// Zoom the viewport toward a screen-space point by `factor`.
-pub fn zoom_toward(
+pub(crate) fn zoom_toward(
     viewport: &mut Viewport,
     screen_pos: egui::Pos2,
     factor: f32,
@@ -150,7 +150,7 @@ pub fn zoom_toward(
 /// canvas rect size and the current zoom.
 ///
 /// If either extent bound is infinite (the default) the axis is unclamped.
-pub fn clamp_translate(
+pub(crate) fn clamp_translate(
     viewport: &mut Viewport,
     extent: &CoordinateExtent,
     canvas_rect: egui::Rect,
@@ -196,7 +196,7 @@ pub fn clamp_translate(
 ///
 /// Returns a velocity vector in screen pixels/frame that should be subtracted
 /// from the viewport translation.
-pub fn calc_auto_pan(
+pub(crate) fn calc_auto_pan(
     pos: egui::Pos2,
     canvas_rect: egui::Rect,
     speed: f32,

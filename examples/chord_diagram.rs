@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop, clippy::manual_clamp)]
 //! Chord diagram example for egui_xyflow.
 //!
 //! Implements a D3-style chord diagram: groups are arranged as arcs around

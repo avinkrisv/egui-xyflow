@@ -5,7 +5,7 @@ use crate::types::node::InternalNode;
 use crate::types::position::Transform;
 
 /// Render handles for a node. Returns handle rects for hit-testing.
-pub fn render_handles<D>(
+pub(crate) fn render_handles<D>(
     painter: &egui::Painter,
     node: &InternalNode<D>,
     transform: &Transform,
@@ -63,14 +63,14 @@ pub fn render_handles<D>(
 }
 
 #[derive(Debug, Clone)]
-pub struct HandleHitRect {
-    pub screen_center: egui::Pos2,
-    pub radius: f32,
-    pub handle: crate::types::handle::Handle,
+pub(crate) struct HandleHitRect {
+    pub(crate) screen_center: egui::Pos2,
+    pub(crate) radius: f32,
+    pub(crate) handle: crate::types::handle::Handle,
 }
 
 impl HandleHitRect {
-    pub fn contains(&self, pos: egui::Pos2) -> bool {
+    pub(crate) fn contains(&self, pos: egui::Pos2) -> bool {
         pos.distance(self.screen_center) <= self.radius
     }
 }

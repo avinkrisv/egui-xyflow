@@ -1,6 +1,7 @@
 use super::handle::{Handle, NodeHandle};
 use super::position::{CoordinateExtent, Dimensions, NodeOrigin, Position};
 
+/// Unique identifier for a node in the graph.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NodeId(pub String);
@@ -29,13 +30,20 @@ impl From<String> for NodeId {
     }
 }
 
+/// Constraint on how far a node can be dragged.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum NodeExtent {
+    /// Constrain to the parent node's bounding box.
     Parent,
+    /// Constrain to an explicit coordinate rectangle.
     Coordinates(CoordinateExtent),
 }
 
+/// A node in the graph, parameterised over user data `D`.
+///
+/// Create nodes with [`Node::builder`] for a fluent API, or construct
+/// the struct directly for full control.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Node<D = ()> {
@@ -74,6 +82,7 @@ impl<D: Default> Node<D> {
     }
 }
 
+/// Builder for constructing [`Node`] instances with a fluent API.
 pub struct NodeBuilder<D = ()> {
     node: Node<D>,
 }
@@ -149,22 +158,34 @@ impl<D: Default> NodeBuilder<D> {
     }
 }
 
+/// Resolved handle positions for a node, split by source and target.
 #[derive(Debug, Clone, Default)]
 pub struct NodeHandleBounds {
+    /// Source (output) handles.
     pub source: Vec<Handle>,
+    /// Target (input) handles.
     pub target: Vec<Handle>,
 }
 
+/// Internal computed state for a node (absolute position, z-order, handles).
 #[derive(Debug, Clone)]
 pub struct NodeInternals {
+    /// Absolute position in flow space (after parent offsets).
     pub position_absolute: egui::Pos2,
+    /// Resolved z-index for rendering order.
     pub z: i32,
+    /// Resolved handle geometry.
     pub handle_bounds: NodeHandleBounds,
 }
 
+/// A node paired with its computed internal state.
+///
+/// This is the type stored in the node lookup map and passed to renderers.
 #[derive(Debug, Clone)]
 pub struct InternalNode<D = ()> {
+    /// The user-facing node data.
     pub node: Node<D>,
+    /// Computed internal state.
     pub internals: NodeInternals,
 }
 

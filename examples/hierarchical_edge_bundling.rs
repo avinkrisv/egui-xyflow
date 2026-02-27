@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! Hierarchical Edge Bundling example for egui_xyflow.
 //!
 //! Implements a D3-style hierarchical edge bundling visualization: leaf nodes

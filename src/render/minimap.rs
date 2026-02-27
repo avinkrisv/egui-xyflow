@@ -169,7 +169,7 @@ pub fn render_minimap<D>(
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Geometry information about the rendered minimap, returned by
-/// [`render_minimap`].  Pass this to [`minimap_click_to_flow`] to convert a
+/// `render_minimap`.  Use the `mm_rect` and scale fields to convert a
 /// click position inside the minimap into a flow-space coordinate.
 #[derive(Clone, Copy, Debug)]
 pub struct MinimapInfo {

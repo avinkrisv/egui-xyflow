@@ -1,3 +1,4 @@
+#![allow(clippy::needless_range_loop)]
 //! Sankey diagram example for egui_xyflow.
 //!
 //! Implements a D3-style Sankey energy-flow diagram: nodes are tall narrow

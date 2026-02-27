@@ -9,7 +9,7 @@ use std::collections::HashMap;
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Process node drag for a single node. Returns position change if dragged.
-pub fn handle_node_drag<D>(
+pub(crate) fn handle_node_drag<D>(
     node_id: &NodeId,
     drag_delta: egui::Vec2,
     transform: &Transform,
@@ -40,15 +40,6 @@ pub fn handle_node_drag<D>(
     })
 }
 
-/// Generate drag-end change for a single node.
-pub fn handle_node_drag_end<D>(node_id: &NodeId) -> NodeChange<D> {
-    NodeChange::Position {
-        id: node_id.clone(),
-        position: None,
-        dragging: Some(false),
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Multi-node drag
 // ─────────────────────────────────────────────────────────────────────────────
@@ -63,7 +54,7 @@ pub fn handle_node_drag_end<D>(node_id: &NodeId) -> NodeChange<D> {
 /// If `primary_id` is NOT selected (or there is only one selected node) the
 /// function returns an empty `Vec` so the caller can fall back to the normal
 /// single-node drag path.
-pub fn handle_multi_node_drag<D>(
+pub(crate) fn handle_multi_node_drag<D>(
     primary_id: &NodeId,
     drag_delta: egui::Vec2,
     transform: &Transform,
@@ -136,7 +127,7 @@ pub fn handle_multi_node_drag<D>(
 ///
 /// Call this when a drag gesture finishes so that every dragging node has its
 /// `dragging` flag cleared.
-pub fn handle_multi_node_drag_end<D>(
+pub(crate) fn handle_multi_node_drag_end<D>(
     node_lookup: &HashMap<NodeId, InternalNode<D>>,
 ) -> Vec<NodeChange<D>> {
     node_lookup
@@ -150,13 +141,3 @@ pub fn handle_multi_node_drag_end<D>(
         .collect()
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Coordinate helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// Convert a screen-space drag delta to a flow-space delta given the current
-/// viewport transform (zoom).
-#[inline]
-pub fn screen_delta_to_flow(delta: egui::Vec2, transform: &Transform) -> egui::Vec2 {
-    egui::vec2(delta.x / transform.scale, delta.y / transform.scale)
-}

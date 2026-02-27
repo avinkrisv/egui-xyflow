@@ -51,7 +51,7 @@ pub fn get_bezier_path(pos: &EdgePosition, curvature: Option<f32>) -> EdgePathRe
         c,
     );
     let cp2 = get_control_with_curvature(
-        pos.target_pos.opposite(),
+        pos.target_pos,
         pos.target_x,
         pos.target_y,
         pos.source_x,

@@ -9,6 +9,7 @@ use std::collections::HashMap;
 /// When `source_anchor` or `target_anchor` is provided it takes precedence
 /// over handle lookup — the anchor's resolved point and side are used
 /// directly.
+#[allow(clippy::too_many_arguments)]
 pub fn get_edge_position<D>(
     source_id: &NodeId,
     target_id: &NodeId,
@@ -133,7 +134,7 @@ pub fn get_handle_absolute_position<D>(node: &InternalNode<D>, handle: &Handle) 
 }
 
 /// Project a flow-space point onto the nearest border of `rect` and return
-/// the corresponding [`EdgeAnchor`].
+/// the corresponding [`crate::types::edge::EdgeAnchor`].
 pub fn project_to_border(
     point: egui::Pos2,
     rect: egui::Rect,

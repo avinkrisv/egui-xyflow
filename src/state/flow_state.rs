@@ -331,7 +331,7 @@ fn build_handle_bounds<D>(node: &Node<D>, config: &FlowConfig) -> NodeHandleBoun
         .filter(|h| h.handle_type == HandleType::Target)
         .collect();
 
-    for (_, nh) in source_handles.iter().enumerate() {
+    for nh in source_handles.iter() {
         let count = source_handles
             .iter()
             .filter(|h| h.position == nh.position)
@@ -354,7 +354,7 @@ fn build_handle_bounds<D>(node: &Node<D>, config: &FlowConfig) -> NodeHandleBoun
         });
     }
 
-    for (_, nh) in target_handles.iter().enumerate() {
+    for nh in target_handles.iter() {
         let count = target_handles
             .iter()
             .filter(|h| h.position == nh.position)

@@ -1,7 +1,7 @@
 use egui::{Color32, Rect, Stroke};
 
 /// Render the selection rectangle overlay (solid border + semi-transparent fill).
-pub fn render_selection_rect(painter: &egui::Painter, selection_rect: Rect) {
+pub(crate) fn render_selection_rect(painter: &egui::Painter, selection_rect: Rect) {
     // Semi-transparent fill
     painter.rect_filled(
         selection_rect,

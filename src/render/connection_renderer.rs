@@ -8,7 +8,7 @@ use crate::types::edge::{EdgePosition, EdgeType};
 use crate::types::position::Transform;
 
 /// Render the in-progress connection line (from a dragged handle to the pointer).
-pub fn render_connection_line(
+pub(crate) fn render_connection_line(
     painter: &egui::Painter,
     connection_state: &ConnectionState,
     transform: &Transform,

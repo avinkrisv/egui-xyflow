@@ -78,7 +78,9 @@ impl SimpleRng {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Default)]
 enum Group {
+    #[default]
     Researchers,
     Engineers,
     Designers,
@@ -86,11 +88,6 @@ enum Group {
     Students,
 }
 
-impl Default for Group {
-    fn default() -> Self {
-        Group::Researchers
-    }
-}
 
 impl Group {
     const ALL: [Group; NUM_GROUPS] = [

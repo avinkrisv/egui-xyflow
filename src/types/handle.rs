@@ -1,9 +1,12 @@
 use super::position::Position;
 
+/// Whether a handle is a source (output) or target (input) for connections.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum HandleType {
+    /// Output handle — connections start here.
     Source,
+    /// Input handle — connections end here.
     Target,
 }
 

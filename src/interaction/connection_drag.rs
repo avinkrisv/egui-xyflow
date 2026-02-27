@@ -12,7 +12,7 @@ use std::collections::HashMap;
 ///
 /// In `Loose` mode any handle on any node (except the originating handle
 /// itself) is a valid target, regardless of type.
-pub fn get_closest_handle<D>(
+pub(crate) fn get_closest_handle<D>(
     position: egui::Pos2,
     connection_radius: f32,
     node_lookup: &HashMap<NodeId, InternalNode<D>>,

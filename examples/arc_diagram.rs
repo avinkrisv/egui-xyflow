@@ -322,7 +322,7 @@ fn compute_order(chars: &[CharDef]) -> Vec<usize> {
         chars[a]
             .group
             .cmp(&chars[b].group)
-            .then_with(|| chars[a].name.cmp(&chars[b].name))
+            .then_with(|| chars[a].name.cmp(chars[b].name))
     });
 
     // order_of[original_index] = position in the sorted line

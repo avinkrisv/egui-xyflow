@@ -1,7 +1,7 @@
 use crate::config::{BackgroundVariant, FlowConfig};
 use crate::types::viewport::Viewport;
 
-pub fn render_background(
+pub(crate) fn render_background(
     painter: &egui::Painter,
     canvas_rect: egui::Rect,
     viewport: &Viewport,

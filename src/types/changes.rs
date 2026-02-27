@@ -1,7 +1,10 @@
-use super::edge::{Edge, EdgeAnchor, EdgeId};
+use super::edge::{Edge, EdgeAnchor, EdgeId, EdgeStyle};
 use super::node::{Node, NodeId};
 use super::position::Dimensions;
 
+/// A mutation to apply to a node.
+///
+/// Pass a `Vec<NodeChange>` to [`crate::state::flow_state::FlowState::apply_node_changes`].
 #[derive(Debug, Clone)]
 pub enum NodeChange<D = ()> {
     Position {
@@ -30,6 +33,9 @@ pub enum NodeChange<D = ()> {
     },
 }
 
+/// A mutation to apply to an edge.
+///
+/// Pass a `Vec<EdgeChange>` to [`crate::state::flow_state::FlowState::apply_edge_changes`].
 #[derive(Debug, Clone)]
 pub enum EdgeChange<D = ()> {
     Select {
@@ -53,5 +59,11 @@ pub enum EdgeChange<D = ()> {
         id: EdgeId,
         source_anchor: Option<Option<EdgeAnchor>>,
         target_anchor: Option<Option<EdgeAnchor>>,
+    },
+    /// Update per-edge visual style. `Some(Some(..))` sets a style,
+    /// `Some(None)` clears it back to config defaults.
+    Style {
+        id: EdgeId,
+        style: Option<EdgeStyle>,
     },
 }

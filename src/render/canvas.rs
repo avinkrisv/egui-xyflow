@@ -28,7 +28,7 @@ use crate::interaction::resize::{render_and_handle_resize, should_show_resize_ha
 use crate::interaction::selection::get_nodes_inside;
 use crate::render::background::render_background;
 use crate::render::connection_renderer::render_connection_line;
-use crate::render::edge_renderer::render_edges;
+use crate::render::edge_renderer::{render_edge_contact_indicators, render_edges, EdgeEndpoints};
 use crate::render::handle_renderer::render_handles;
 use crate::render::minimap::render_minimap;
 use crate::render::node_renderer::NodeWidget;
@@ -207,6 +207,7 @@ where
         );
 
         // ── 2. Edges ─────────────────────────────────────────────────────────
+        let edge_endpoints: Vec<EdgeEndpoints>;
         if let Some(ew) = self.edge_widget {
             render_edges_custom(
                 &painter,
@@ -217,8 +218,9 @@ where
                 time,
                 ew,
             );
+            edge_endpoints = Vec::new(); // custom renderer handles its own indicators
         } else {
-            render_edges(
+            edge_endpoints = render_edges(
                 &painter,
                 &self.state.edges,
                 &self.state.node_lookup,
@@ -229,6 +231,7 @@ where
         }
 
         // ── Edge hit-testing / selection ─────────────────────────────────────
+        let edge_clicked_this_frame = !events.edges_clicked.is_empty();
         let edge_changes = process_edge_clicks(
             ui,
             canvas_id,
@@ -240,6 +243,8 @@ where
             primary_pressed,
             &mut events,
         );
+        let edge_clicked_this_frame =
+            edge_clicked_this_frame || !events.edges_clicked.is_empty();
         if !edge_changes.is_empty() {
             self.state.apply_edge_changes(&edge_changes);
         }
@@ -251,6 +256,8 @@ where
 
         {
             let anchor_edge_changes = handle_anchor_drag(
+                &painter,
+                ui,
                 &self.state.edges,
                 &self.state.node_lookup,
                 &transform,
@@ -530,10 +537,7 @@ where
                     // any conflicting node drag that was detected earlier in
                     // this frame — the resize handle takes priority.
                     if mem.resize_state.is_some() {
-                        node_changes.retain(|c| match c {
-                            NodeChange::Position { id, .. } if *id == resize_node_id => false,
-                            _ => true,
-                        });
+                        node_changes.retain(|c| !matches!(c, NodeChange::Position { id, .. } if *id == resize_node_id));
                         if active_drag_id.as_ref() == Some(&resize_node_id) {
                             active_drag_id = None;
                             active_drag_ended = false;
@@ -657,6 +661,14 @@ where
             self.state.apply_node_changes(&node_changes);
         }
 
+        // ── Edge contact indicators (rendered on top of nodes) ───────────────
+        render_edge_contact_indicators(
+            &painter,
+            &edge_endpoints,
+            &transform,
+            &self.state.config,
+        );
+
         // ── Connection state machine ─────────────────────────────────────────
         // Start a new connection drag
         if let Some((handle, from_flow)) = newly_pressed_handle {
@@ -669,7 +681,7 @@ where
                 from_position: from_pos,
                 from_node_id: NodeId::new(handle.node_id.clone()),
                 to: from_flow,
-                to_handle: None,
+                to_handle: Box::new(None),
                 to_position: from_pos.opposite(),
                 to_node_id: None,
             };
@@ -735,6 +747,7 @@ where
                             source_anchor: None,
                             target_anchor: None,
                             anchors_draggable: None,
+                            style: None,
                         };
                         self.state.add_edge(new_edge);
                         events.push_connection(conn);
@@ -751,12 +764,13 @@ where
         // ── Canvas pan/zoom (background only) ────────────────────────────────
         let is_connecting = !matches!(self.state.connection_state, ConnectionState::None);
         let resize_active = mem.resize_state.is_some();
+        let anchor_drag_active = mem.anchor_drag.is_some();
         // Suppress left-button panning when a selection drag is active or
         // starting (Shift held with pan_on_drag enabled).
         let shift_held = ui.input(|i| i.modifiers.shift);
         let selection_active = mem.selection_start.is_some()
             || (self.state.config.pan_on_drag && shift_held && !hovered_node);
-        if !any_node_dragging && !is_connecting && !resize_active {
+        if !any_node_dragging && !is_connecting && !resize_active && !anchor_drag_active {
             let pz = handle_pan_zoom(
                 ui,
                 &canvas_response,
@@ -800,6 +814,8 @@ where
                 is_connecting,
                 pointer_pos,
                 resize_active,
+                edge_clicked_this_frame,
+                anchor_drag_active,
             );
 
         // Detect selection change
@@ -1241,12 +1257,12 @@ fn update_connection_state<D>(
     {
         *to = flow_pp;
         if let Some(h) = closest {
-            *to_handle = Some(h.clone());
+            **to_handle = Some(h.clone());
             *to_position = h.position;
             *to_node_id = Some(NodeId::new(h.node_id.clone()));
             *is_valid = Some(true);
         } else {
-            *to_handle = None;
+            **to_handle = None;
             *to_node_id = None;
             *is_valid = None;
             // Restore default opposite direction for the line endpoint
@@ -1261,10 +1277,11 @@ fn try_resolve_connection(state: &ConnectionState) -> Option<Connection> {
             from_node_id,
             from_handle,
             to_node_id: Some(to_node_id),
-            to_handle: Some(to_handle),
+            to_handle,
             is_valid: Some(true),
             ..
         } => {
+            let to_handle = to_handle.as_ref().as_ref()?;
             // Direction: source handle → target handle
             let (source, target, sh, th) =
                 if from_handle.handle_type == crate::types::handle::HandleType::Source {
@@ -1298,7 +1315,7 @@ fn try_resolve_connection(state: &ConnectionState) -> Option<Connection> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Returns `(new_selection_rect, updated_memory, node_changes_to_apply)`.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::type_complexity)]
 fn process_selection<ND, ED>(
     ui: &egui::Ui,
     canvas_response: &egui::Response,
@@ -1314,6 +1331,8 @@ fn process_selection<ND, ED>(
     is_connecting: bool,
     pointer_pos: Option<egui::Pos2>,
     resize_active: bool,
+    edge_clicked: bool,
+    anchor_drag_active: bool,
 ) -> (
     Option<egui::Rect>,
     CanvasMemory,
@@ -1324,8 +1343,9 @@ fn process_selection<ND, ED>(
     let mut node_changes: Vec<NodeChange<ND>> = Vec::new();
     let mut edge_changes: Vec<EdgeChange<ED>> = Vec::new();
 
-    // If pointer is over a node / dragging a node / connecting / resizing, don't do selection
-    if over_node || node_dragging || is_connecting || resize_active {
+    // If pointer is over a node / dragging a node / connecting / resizing /
+    // edge was clicked / anchor drag active, don't do selection
+    if over_node || node_dragging || is_connecting || resize_active || edge_clicked || anchor_drag_active {
         new_mem.selection_start = None;
         return (None, new_mem, node_changes, edge_changes);
     }
@@ -1438,9 +1458,12 @@ fn process_selection<ND, ED>(
 // Edge anchor drag interaction
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Handle edge anchor dragging.  Returns edge changes to apply.
+/// Handle edge anchor dragging and draw hover highlights on contact
+/// indicators.  Returns edge changes to apply.
 #[allow(clippy::too_many_arguments)]
 fn handle_anchor_drag<ND, ED>(
+    painter: &egui::Painter,
+    ui: &egui::Ui,
     edges: &[Edge<ED>],
     node_lookup: &HashMap<NodeId, crate::types::node::InternalNode<ND>>,
     transform: &Transform,
@@ -1461,56 +1484,106 @@ fn handle_anchor_drag<ND, ED>(
         None => return changes,
     };
 
-    // ── Start: detect press near an edge endpoint ────────────────────────────
-    if primary_pressed && anchor_drag.is_none() {
-        let hit_radius = config.handle_size * 2.0 * transform.scale;
+    let indicator_r = config.edge_contact_indicator_radius * transform.scale;
+    let hit_radius = (indicator_r * 2.5).max(config.handle_size * transform.scale);
+    let mut hovered_any = false;
 
-        for edge in edges {
-            if edge.hidden {
-                continue;
+    // ── Hover highlights + start drag ────────────────────────────────────────
+    for edge in edges {
+        if edge.hidden {
+            continue;
+        }
+        let draggable = edge
+            .anchors_draggable
+            .unwrap_or(config.edge_anchors_draggable);
+        if !draggable {
+            continue;
+        }
+
+        let ep = match get_edge_position(
+            &edge.source,
+            &edge.target,
+            edge.source_handle.as_deref(),
+            edge.target_handle.as_deref(),
+            node_lookup,
+            config.default_source_position,
+            config.default_target_position,
+            edge.source_anchor.as_ref(),
+            edge.target_anchor.as_ref(),
+        ) {
+            Some(p) => p,
+            None => continue,
+        };
+
+        let src_screen = flow_to_screen(egui::pos2(ep.source_x, ep.source_y), transform);
+        let tgt_screen = flow_to_screen(egui::pos2(ep.target_x, ep.target_y), transform);
+
+        let src_hovered = pp.distance(src_screen) < hit_radius;
+        let tgt_hovered = pp.distance(tgt_screen) < hit_radius;
+
+        // Draw hover highlight over the contact indicator
+        if config.show_edge_contact_indicators {
+            if src_hovered {
+                let r = indicator_r * 1.5;
+                painter.circle_filled(src_screen, r, config.edge_contact_indicator_hover_color);
+                painter.circle_stroke(
+                    src_screen,
+                    r,
+                    egui::Stroke::new(1.5 * transform.scale, egui::Color32::WHITE),
+                );
+                hovered_any = true;
             }
-            let draggable = edge
-                .anchors_draggable
-                .unwrap_or(config.edge_anchors_draggable);
-            if !draggable {
-                continue;
+            if tgt_hovered {
+                let r = indicator_r * 1.5;
+                painter.circle_filled(tgt_screen, r, config.edge_contact_indicator_hover_color);
+                painter.circle_stroke(
+                    tgt_screen,
+                    r,
+                    egui::Stroke::new(1.5 * transform.scale, egui::Color32::WHITE),
+                );
+                hovered_any = true;
             }
+        }
 
-            let ep = match get_edge_position(
-                &edge.source,
-                &edge.target,
-                edge.source_handle.as_deref(),
-                edge.target_handle.as_deref(),
-                node_lookup,
-                config.default_source_position,
-                config.default_target_position,
-                edge.source_anchor.as_ref(),
-                edge.target_anchor.as_ref(),
-            ) {
-                Some(p) => p,
-                None => continue,
-            };
-
-            let src_screen = flow_to_screen(egui::pos2(ep.source_x, ep.source_y), transform);
-            let tgt_screen = flow_to_screen(egui::pos2(ep.target_x, ep.target_y), transform);
-
-            if pp.distance(src_screen) < hit_radius {
+        // Start drag on press
+        if primary_pressed && anchor_drag.is_none() {
+            if src_hovered {
                 *anchor_drag = Some(AnchorDragState {
                     edge_id: edge.id.clone(),
                     endpoint: AnchorEndpoint::Source,
                     node_id: edge.source.clone(),
                 });
-                break;
-            }
-            if pp.distance(tgt_screen) < hit_radius {
+            } else if tgt_hovered {
                 *anchor_drag = Some(AnchorDragState {
                     edge_id: edge.id.clone(),
                     endpoint: AnchorEndpoint::Target,
                     node_id: edge.target.clone(),
                 });
-                break;
             }
         }
+    }
+
+    if hovered_any {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grab);
+    }
+
+    // ── During drag: draw a preview dot on the node border ───────────────────
+    if let Some(ref drag) = anchor_drag {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+        let flow_pp = screen_to_flow(pp, transform);
+        if let Some(node) = node_lookup.get(&drag.node_id) {
+            let preview_anchor = project_to_border(flow_pp, node.rect());
+            let preview_pt = preview_anchor.resolve(node.rect());
+            let preview_screen = flow_to_screen(preview_pt, transform);
+            let r = indicator_r * 1.8;
+            painter.circle_filled(preview_screen, r, config.edge_contact_indicator_hover_color);
+            painter.circle_stroke(
+                preview_screen,
+                r,
+                egui::Stroke::new(1.5 * transform.scale, egui::Color32::WHITE),
+            );
+        }
+        ui.ctx().request_repaint();
     }
 
     // ── Release: commit the anchor ───────────────────────────────────────────
@@ -1525,8 +1598,8 @@ fn handle_anchor_drag<ND, ED>(
                 };
                 changes.push(EdgeChange::Anchor {
                     id: drag.edge_id.clone(),
-                    source_anchor: sa.clone(),
-                    target_anchor: ta.clone(),
+                    source_anchor: sa,
+                    target_anchor: ta,
                 });
                 events.push_anchor_changed(
                     drag.edge_id,
