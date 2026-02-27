@@ -1,0 +1,78 @@
+[package]
+name = "egui_xyflow"
+version = "0.1.0"
+edition = "2021"
+description = "A node graph editor widget for egui, inspired by xyflow"
+license = "MIT"
+
+[dependencies]
+egui = "0.31"
+emath = "0.31"
+epaint = "0.31"
+serde = { version = "1", features = ["derive"], optional = true }
+log = "0.4"
+
+[dev-dependencies]
+eframe = { version = "0.31", features = ["default"] }
+env_logger = "0.11"
+serde_json = "1"
+
+[features]
+default = ["serde"]
+serde = ["dep:serde", "egui/serde"]
+
+[[example]]
+name = "basic_flow"
+path = "examples/basic_flow.rs"
+
+[[example]]
+name = "data_pipeline"
+path = "examples/data_pipeline.rs"
+
+[[example]]
+name = "state_machine"
+path = "examples/state_machine.rs"
+
+[[example]]
+name = "neural_network"
+path = "examples/neural_network.rs"
+
+[[example]]
+name = "dependency_graph"
+path = "examples/dependency_graph.rs"
+
+[[example]]
+name = "logic_gates"
+path = "examples/logic_gates.rs"
+
+[[example]]
+name = "temporal_force_graph"
+path = "examples/temporal_force_graph.rs"
+
+[[example]]
+name = "radial_tree"
+path = "examples/radial_tree.rs"
+
+[[example]]
+name = "disjoint_force_graph"
+path = "examples/disjoint_force_graph.rs"
+
+[[example]]
+name = "sankey_diagram"
+path = "examples/sankey_diagram.rs"
+
+[[example]]
+name = "chord_diagram"
+path = "examples/chord_diagram.rs"
+
+[[example]]
+name = "arc_diagram"
+path = "examples/arc_diagram.rs"
+
+[[example]]
+name = "collapsible_tree"
+path = "examples/collapsible_tree.rs"
+
+[[example]]
+name = "hierarchical_edge_bundling"
+path = "examples/hierarchical_edge_bundling.rs"
