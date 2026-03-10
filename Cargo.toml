@@ -9,7 +9,7 @@ repository = "https://github.com/avinkrism4pro/egui_xyflow"
 readme = "README.md"
 keywords = ["egui", "node-graph", "flow", "editor", "xyflow"]
 categories = ["gui", "visualization"]
-exclude = ["CLAUDE.md", ".claude/", "benchmarks/"]
+exclude = ["CLAUDE.md", ".claude/", "benchmarks/", "screenshots/", "capture_screenshots.sh"]
 
 [dependencies]
 egui = "0.31"

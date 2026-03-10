@@ -5,3 +5,4 @@ Cargo.lock
 *.swo
 .idea/
 .vscode/
+capture_screenshots.sh
