@@ -1,11 +1,11 @@
 [package]
 name = "egui_xyflow"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.85"
 description = "An interactive node-graph editor widget for egui, inspired by xyflow (React Flow)"
 license = "MIT"
-repository = "https://github.com/avinkrism4pro/egui_xyflow"
+repository = "https://github.com/avinkrisv/egui_xyflow"
 readme = "README.md"
 keywords = ["egui", "node-graph", "flow", "editor", "xyflow"]
 categories = ["gui", "visualization"]
