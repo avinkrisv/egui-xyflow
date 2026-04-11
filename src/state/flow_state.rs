@@ -59,12 +59,35 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
         self.rebuild_lookup();
     }
 
+    /// Add multiple nodes to the graph in a single batch.
+    ///
+    /// More efficient than calling [`add_node`](Self::add_node) in a loop
+    /// because the internal lookup is rebuilt only once after all nodes are
+    /// inserted.
+    pub fn add_nodes(&mut self, nodes: impl IntoIterator<Item = Node<ND>>) {
+        let before = self.nodes.len();
+        self.nodes.extend(nodes);
+        if self.nodes.len() > before {
+            self.rebuild_lookup();
+        }
+    }
+
     /// Add an edge to the graph.
     pub fn add_edge(&mut self, edge: Edge<ED>) {
         if edge.animated {
             self.has_animated_edges = true;
         }
         self.edges.push(edge);
+    }
+
+    /// Add multiple edges to the graph in a single batch.
+    pub fn add_edges(&mut self, edges: impl IntoIterator<Item = Edge<ED>>) {
+        for edge in edges {
+            if edge.animated {
+                self.has_animated_edges = true;
+            }
+            self.edges.push(edge);
+        }
     }
 
     /// Apply a batch of node mutations.  Non-structural changes (position,

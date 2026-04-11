@@ -186,6 +186,26 @@ pub struct FlowConfig {
     pub edge_contact_indicator_hover_color: egui::Color32,
 }
 
+impl FlowConfig {
+    /// Return [`node_corner_radius`](Self::node_corner_radius) as an
+    /// [`egui::CornerRadius`] for use in custom [`NodeWidget`](crate::render::node_renderer::NodeWidget)
+    /// implementations.
+    ///
+    /// The `f32` value is rounded and clamped to `u8` range (0–255).
+    /// Modify individual fields on the returned value for per-corner control:
+    ///
+    /// ```rust,ignore
+    /// let mut r = config.corner_radius();
+    /// r.ne = 0; // sharp top-right
+    /// r.se = 0; // sharp bottom-right
+    /// painter.rect_filled(rect, r, color);
+    /// ```
+    pub fn corner_radius(&self) -> egui::CornerRadius {
+        let r = self.node_corner_radius.round().clamp(0.0, 255.0) as u8;
+        egui::CornerRadius { nw: r, ne: r, sw: r, se: r }
+    }
+}
+
 impl Default for FlowConfig {
     fn default() -> Self {
         Self {

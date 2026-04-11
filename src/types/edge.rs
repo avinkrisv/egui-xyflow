@@ -113,6 +113,18 @@ impl From<&str> for EdgeId {
     }
 }
 
+impl From<String> for EdgeId {
+    fn from(s: String) -> Self {
+        Self(Arc::from(s))
+    }
+}
+
+impl From<&String> for EdgeId {
+    fn from(s: &String) -> Self {
+        Self(Arc::from(s.as_str()))
+    }
+}
+
 /// The path algorithm used to draw an edge.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -199,7 +211,8 @@ fn default_interaction_width() -> f32 {
     20.0
 }
 
-impl<D: Default> Edge<D> {
+impl<D> Edge<D> {
+    /// Create a new edge connecting two nodes.
     pub fn new(id: impl Into<Arc<str>>, source: impl Into<Arc<str>>, target: impl Into<Arc<str>>) -> Self {
         Self {
             id: EdgeId::new(id),
@@ -224,9 +237,7 @@ impl<D: Default> Edge<D> {
             style: None,
         }
     }
-}
 
-impl<D> Edge<D> {
     /// Set the path algorithm for this edge.
     pub fn edge_type(mut self, t: EdgeType) -> Self {
         self.edge_type = Some(t);

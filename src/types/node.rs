@@ -42,6 +42,12 @@ impl From<String> for NodeId {
     }
 }
 
+impl From<&String> for NodeId {
+    fn from(s: &String) -> Self {
+        Self(Arc::from(s.as_str()))
+    }
+}
+
 /// Constraint on how far a node can be dragged.
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -90,93 +96,164 @@ pub struct Node<D = ()> {
 
 impl<D: Default> Node<D> {
     /// Create a [`NodeBuilder`] for constructing a node with a fluent API.
+    ///
+    /// Requires `D: Default` — the node data is initialised to `D::default()`
+    /// and can be overridden with [`.data()`](NodeBuilder::data).  For types
+    /// that do not implement `Default`, use [`Node::builder_with_data`].
     pub fn builder(id: impl Into<Arc<str>>) -> NodeBuilder<D> {
         NodeBuilder::new(id)
     }
 }
 
+impl<D> Node<D> {
+    /// Create a [`NodeBuilder`] with explicit data, without requiring `D: Default`.
+    ///
+    /// ```rust,ignore
+    /// let node = Node::builder_with_data("n1", MyData { label: "hello".into() })
+    ///     .position(egui::pos2(100.0, 50.0))
+    ///     .build();
+    /// ```
+    pub fn builder_with_data(id: impl Into<Arc<str>>, data: D) -> NodeBuilder<D> {
+        NodeBuilder::with_data(id, data)
+    }
+}
+
 /// Builder for constructing [`Node`] instances with a fluent API.
+///
+/// Created via [`Node::builder`] (requires `D: Default`) or
+/// [`Node::builder_with_data`] (works for any `D`).
 pub struct NodeBuilder<D = ()> {
-    node: Node<D>,
+    id: NodeId,
+    position: egui::Pos2,
+    data: Option<D>,
+    node_type: Option<String>,
+    source_position: Option<Position>,
+    target_position: Option<Position>,
+    hidden: bool,
+    draggable: Option<bool>,
+    selectable: Option<bool>,
+    connectable: Option<bool>,
+    deletable: Option<bool>,
+    width: Option<f32>,
+    height: Option<f32>,
+    parent_id: Option<NodeId>,
+    z_index: Option<i32>,
+    extent: Option<NodeExtent>,
+    expand_parent: bool,
+    origin: Option<NodeOrigin>,
+    handles: Vec<NodeHandle>,
+    measured: Option<Dimensions>,
 }
 
 impl<D: Default> NodeBuilder<D> {
-    /// Create a new builder with the given node ID and default values.
+    /// Create a new builder with the given node ID and default data.
     pub fn new(id: impl Into<Arc<str>>) -> Self {
+        Self::with_data(id, D::default())
+    }
+}
+
+impl<D> NodeBuilder<D> {
+    /// Create a new builder with explicit data (no `Default` bound required).
+    pub fn with_data(id: impl Into<Arc<str>>, data: D) -> Self {
         Self {
-            node: Node {
-                id: NodeId::new(id),
-                position: egui::Pos2::ZERO,
-                data: D::default(),
-                node_type: None,
-                source_position: None,
-                target_position: None,
-                hidden: false,
-                selected: false,
-                dragging: false,
-                draggable: None,
-                selectable: None,
-                connectable: None,
-                deletable: None,
-                width: None,
-                height: None,
-                parent_id: None,
-                z_index: None,
-                extent: None,
-                expand_parent: false,
-                origin: None,
-                handles: Vec::new(),
-                measured: None,
-            },
+            id: NodeId::new(id),
+            position: egui::Pos2::ZERO,
+            data: Some(data),
+            node_type: None,
+            source_position: None,
+            target_position: None,
+            hidden: false,
+            draggable: None,
+            selectable: None,
+            connectable: None,
+            deletable: None,
+            width: None,
+            height: None,
+            parent_id: None,
+            z_index: None,
+            extent: None,
+            expand_parent: false,
+            origin: None,
+            handles: Vec::new(),
+            measured: None,
         }
     }
 
     /// Set the node's initial position in flow space.
     pub fn position(mut self, pos: egui::Pos2) -> Self {
-        self.node.position = pos;
+        self.position = pos;
         self
     }
 
     /// Set the user data attached to this node.
     pub fn data(mut self, data: D) -> Self {
-        self.node.data = data;
+        self.data = Some(data);
         self
     }
 
     /// Add a connection handle to this node.
     pub fn handle(mut self, handle: NodeHandle) -> Self {
-        self.node.handles.push(handle);
+        self.handles.push(handle);
         self
     }
 
     /// Set the explicit z-index for rendering order.
     pub fn z_index(mut self, z: i32) -> Self {
-        self.node.z_index = Some(z);
+        self.z_index = Some(z);
         self
     }
 
     /// Set whether the node is hidden.
     pub fn hidden(mut self, hidden: bool) -> Self {
-        self.node.hidden = hidden;
+        self.hidden = hidden;
         self
     }
 
     /// Set the parent node ID for nested node groups.
     pub fn parent(mut self, parent_id: impl Into<Arc<str>>) -> Self {
-        self.node.parent_id = Some(NodeId::new(parent_id));
+        self.parent_id = Some(NodeId::new(parent_id));
         self
     }
 
     /// Set the explicit width and height of this node.
     pub fn size(mut self, width: f32, height: f32) -> Self {
-        self.node.width = Some(width);
-        self.node.height = Some(height);
+        self.width = Some(width);
+        self.height = Some(height);
         self
     }
 
     /// Consume the builder and return the constructed [`Node`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if data was not provided. This cannot happen through the public
+    /// API — both [`NodeBuilder::new`] and [`NodeBuilder::with_data`]
+    /// guarantee data is set.
     pub fn build(self) -> Node<D> {
-        self.node
+        Node {
+            id: self.id,
+            position: self.position,
+            data: self.data.expect("NodeBuilder: data must be set"),
+            node_type: self.node_type,
+            source_position: self.source_position,
+            target_position: self.target_position,
+            hidden: self.hidden,
+            selected: false,
+            dragging: false,
+            draggable: self.draggable,
+            selectable: self.selectable,
+            connectable: self.connectable,
+            deletable: self.deletable,
+            width: self.width,
+            height: self.height,
+            parent_id: self.parent_id,
+            z_index: self.z_index,
+            extent: self.extent,
+            expand_parent: self.expand_parent,
+            origin: self.origin,
+            handles: self.handles,
+            measured: self.measured,
+        }
     }
 }
 
