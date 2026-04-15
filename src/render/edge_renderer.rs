@@ -27,13 +27,22 @@ pub(crate) fn render_edges<ND, ED>(
     transform: &Transform,
     config: &FlowConfig,
     time: f64,
+    canvas_rect: egui::Rect,
 ) -> Vec<EdgeEndpoints> {
     let mut endpoints = Vec::with_capacity(edges.len());
     for edge in edges {
         if edge.hidden {
             continue;
         }
-        if let Some(ep) = render_single_edge(painter, edge, node_lookup, transform, config, time) {
+        if let Some(ep) = render_single_edge(
+            painter,
+            edge,
+            node_lookup,
+            transform,
+            config,
+            time,
+            canvas_rect,
+        ) {
             endpoints.push(ep);
         }
     }
@@ -47,6 +56,7 @@ fn render_single_edge<ND, ED>(
     transform: &Transform,
     config: &FlowConfig,
     time: f64,
+    canvas_rect: egui::Rect,
 ) -> Option<EdgeEndpoints> {
     let default_source_pos = config.default_source_position;
     let default_target_pos = config.default_target_position;
@@ -63,6 +73,26 @@ fn render_single_edge<ND, ED>(
         edge.target_anchor.as_ref(),
     )?;
 
+    // Viewport culling: skip edges whose endpoint-AABB is clearly off-screen.
+    // We inflate the rect by a generous margin to account for bezier/step
+    // control points that overshoot the straight-line AABB.
+    if config.cull_offscreen_edges {
+        let src_screen = flow_to_screen(
+            egui::pos2(edge_pos.source_x, edge_pos.source_y),
+            transform,
+        );
+        let tgt_screen = flow_to_screen(
+            egui::pos2(edge_pos.target_x, edge_pos.target_y),
+            transform,
+        );
+        let mut aabb = egui::Rect::from_two_pos(src_screen, tgt_screen);
+        let margin = 64.0_f32.max(aabb.width().abs().max(aabb.height().abs()) * 0.5);
+        aabb = aabb.expand(margin);
+        if !aabb.intersects(canvas_rect) {
+            return None;
+        }
+    }
+
     let edge_type = edge.edge_type.unwrap_or(config.default_edge_type);
     let style = edge.style.as_ref();
     let color = if edge.selected {
@@ -75,9 +105,11 @@ fn render_single_edge<ND, ED>(
     let stroke = egui::Stroke::new(width, color);
     let glow = style.and_then(|s| s.glow);
 
+    let label_pos_flow: Option<egui::Pos2>;
     match edge_type {
         EdgeType::Bezier | EdgeType::SimpleBezier => {
             let result = get_bezier_path(&edge_pos, None);
+            label_pos_flow = Some(result.label_pos);
             if result.points.len() == 4 {
                 let p0 = flow_to_screen(result.points[0], transform);
                 let p1 = flow_to_screen(result.points[1], transform);
@@ -115,6 +147,7 @@ fn render_single_edge<ND, ED>(
         }
         EdgeType::Straight => {
             let result = get_straight_path(&edge_pos);
+            label_pos_flow = Some(result.label_pos);
             let from = flow_to_screen(result.points[0], transform);
             let to = flow_to_screen(result.points[1], transform);
 
@@ -135,6 +168,7 @@ fn render_single_edge<ND, ED>(
         }
         EdgeType::SmoothStep => {
             let result = get_smooth_step_path(&edge_pos, None, None);
+            label_pos_flow = Some(result.label_pos);
             let screen_points: Vec<egui::Pos2> =
                 result.points.iter().map(|p| flow_to_screen(*p, transform)).collect();
 
@@ -155,6 +189,7 @@ fn render_single_edge<ND, ED>(
         }
         EdgeType::Step => {
             let result = get_step_path(&edge_pos, None);
+            label_pos_flow = Some(result.label_pos);
             let screen_points: Vec<egui::Pos2> =
                 result.points.iter().map(|p| flow_to_screen(*p, transform)).collect();
 
@@ -182,6 +217,33 @@ fn render_single_edge<ND, ED>(
             transform,
         );
         super::markers::render_arrow(painter, target_screen, edge_pos.target_pos, color, width);
+    }
+
+    // Render text label at the computed label_pos.
+    if let (Some(label), Some(lp_flow)) = (edge.label.as_deref(), label_pos_flow) {
+        if !label.is_empty() {
+            let center = flow_to_screen(lp_flow, transform);
+            let font = egui::FontId::proportional(config.edge_label_font_size * transform.scale);
+            let galley = painter.layout_no_wrap(
+                label.to_owned(),
+                font,
+                config.edge_label_color,
+            );
+            let pad = config.edge_label_padding * transform.scale;
+            let text_size = galley.size();
+            let rect = egui::Rect::from_center_size(
+                center,
+                egui::vec2(text_size.x + pad * 2.0, text_size.y + pad * 2.0),
+            );
+            if config.edge_label_bg_color != egui::Color32::TRANSPARENT {
+                painter.rect_filled(rect, 3.0 * transform.scale, config.edge_label_bg_color);
+            }
+            let text_pos = egui::pos2(
+                rect.center().x - text_size.x * 0.5,
+                rect.center().y - text_size.y * 0.5,
+            );
+            painter.galley(text_pos, galley, config.edge_label_color);
+        }
     }
 
     // Return endpoint screen positions for contact indicator rendering

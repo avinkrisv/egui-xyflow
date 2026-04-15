@@ -205,6 +205,9 @@ pub struct Edge<D = ()> {
     /// Per-edge visual style overrides (colour, stroke width, glow).
     #[cfg_attr(feature = "serde", serde(default))]
     pub style: Option<EdgeStyle>,
+    /// Optional text label drawn at the edge's computed `label_pos`.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub label: Option<String>,
 }
 
 fn default_interaction_width() -> f32 {
@@ -235,7 +238,17 @@ impl<D> Edge<D> {
             target_anchor: None,
             anchors_draggable: None,
             style: None,
+            label: None,
         }
+    }
+
+    /// Alias for [`Edge::new`] mirroring [`Node::builder`] naming.
+    pub fn builder(
+        id: impl Into<Arc<str>>,
+        source: impl Into<Arc<str>>,
+        target: impl Into<Arc<str>>,
+    ) -> Self {
+        Self::new(id, source, target)
     }
 
     /// Set the path algorithm for this edge.
@@ -307,6 +320,12 @@ impl<D> Edge<D> {
     /// Add a glow effect behind the edge.
     pub fn glow(mut self, color: egui::Color32, width: f32) -> Self {
         self.style.get_or_insert_with(EdgeStyle::default).glow = Some(EdgeGlow::new(color, width));
+        self
+    }
+
+    /// Set a text label drawn at the edge's midpoint.
+    pub fn label(mut self, text: impl Into<String>) -> Self {
+        self.label = Some(text.into());
         self
     }
 }

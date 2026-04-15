@@ -184,6 +184,21 @@ pub struct FlowConfig {
     pub edge_contact_indicator_color: egui::Color32,
     /// Fill colour when the pointer hovers over a contact indicator.
     pub edge_contact_indicator_hover_color: egui::Color32,
+    /// Font size (in logical pixels) for edge labels set via `Edge::label`.
+    pub edge_label_font_size: f32,
+    /// Text colour for edge labels.
+    pub edge_label_color: egui::Color32,
+    /// Background colour painted behind edge labels for legibility. Set to
+    /// `Color32::TRANSPARENT` to disable.
+    pub edge_label_bg_color: egui::Color32,
+    /// Padding (in logical pixels) applied around edge label text when drawing
+    /// the background rectangle.
+    pub edge_label_padding: f32,
+    /// When `true`, edges whose bounding box falls entirely outside the
+    /// visible canvas rect are skipped during rendering. Dramatically reduces
+    /// per-frame cost for large graphs (especially `SmoothStep` edges) at the
+    /// price of an AABB test per edge.
+    pub cull_offscreen_edges: bool,
 }
 
 impl FlowConfig {
@@ -274,6 +289,11 @@ impl Default for FlowConfig {
             edge_contact_indicator_radius: 4.0,
             edge_contact_indicator_color: egui::Color32::from_rgb(177, 177, 183),
             edge_contact_indicator_hover_color: egui::Color32::from_rgb(59, 130, 246),
+            edge_label_font_size: 11.0,
+            edge_label_color: egui::Color32::from_rgb(50, 50, 50),
+            edge_label_bg_color: egui::Color32::from_rgba_unmultiplied(255, 255, 255, 230),
+            edge_label_padding: 3.0,
+            cull_offscreen_edges: true,
         }
     }
 }

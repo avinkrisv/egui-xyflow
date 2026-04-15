@@ -227,6 +227,7 @@ where
                 &transform,
                 &self.state.config,
                 time,
+                canvas_rect,
             );
         }
 
@@ -748,6 +749,7 @@ where
                             target_anchor: None,
                             anchors_draggable: None,
                             style: None,
+                            label: None,
                         };
                         self.state.add_edge(new_edge);
                         events.push_connection(conn);
