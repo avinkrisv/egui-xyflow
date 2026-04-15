@@ -95,6 +95,14 @@ pub struct FlowEvents {
     /// The node currently under the pointer this frame, if any.
     pub node_hovered: Option<NodeId>,
 
+    /// The edge currently under the pointer this frame, if any.
+    ///
+    /// Uses the same accurate bezier / smooth-step / straight hit-test as
+    /// edge click selection, sampled each frame. Opt out by setting
+    /// [`FlowConfig::track_edge_hover`](crate::config::FlowConfig::track_edge_hover)
+    /// to `false` if the per-frame cost is a concern on very large graphs.
+    pub edge_hovered: Option<EdgeId>,
+
     // ── Anchor events ────────────────────────────────────────────────────────
     /// Edge endpoints that were repositioned by the user this frame.
     /// Each entry is `(edge_id, new_source_anchor, new_target_anchor)`.
@@ -124,6 +132,7 @@ impl FlowEvents {
             && self.nodes_deleted.is_empty()
             && self.edges_deleted.is_empty()
             && self.node_hovered.is_none()
+            && self.edge_hovered.is_none()
             && self.edge_anchors_changed.is_empty()
             && !self.viewport_changed
     }
@@ -217,6 +226,11 @@ impl FlowEvents {
     /// Record the currently hovered node.
     pub(crate) fn set_node_hovered(&mut self, id: NodeId) {
         self.node_hovered = Some(id);
+    }
+
+    /// Record the currently hovered edge.
+    pub(crate) fn set_edge_hovered(&mut self, id: EdgeId) {
+        self.edge_hovered = Some(id);
     }
 
     /// Record an edge anchor change.

@@ -1020,34 +1020,23 @@ where
 // Edge hit-testing and click-to-select
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Check if any edge was clicked this frame and return select/deselect changes.
-#[allow(clippy::too_many_arguments)]
-fn process_edge_clicks<ND, ED>(
-    ui: &egui::Ui,
-    _canvas_id: egui::Id,
+/// Find the nearest edge whose interaction band contains the pointer,
+/// honouring `hidden` and `selectable=Some(false)`. Returns the winning
+/// [`EdgeId`] or `None`.
+fn find_edge_under_pointer<ND, ED>(
     edges: &[Edge<ED>],
     node_lookup: &HashMap<NodeId, crate::types::node::InternalNode<ND>>,
     transform: &Transform,
     config: &FlowConfig,
-    pointer_pos: Option<egui::Pos2>,
-    primary_pressed: bool,
-    events: &mut FlowEvents,
-) -> Vec<EdgeChange<ED>> {
+    pointer: egui::Pos2,
+) -> Option<EdgeId> {
     use crate::edges::bezier::{get_bezier_path, sample_bezier};
     use crate::edges::positions::get_edge_position;
     use crate::edges::smooth_step::{get_smooth_step_path, get_step_path};
     use crate::edges::straight::get_straight_path;
     use crate::types::edge::EdgeType;
 
-    if !primary_pressed {
-        return Vec::new();
-    }
-    let pp = match pointer_pos {
-        Some(p) => p,
-        None => return Vec::new(),
-    };
-
-    let mut clicked_edge: Option<EdgeId> = None;
+    let mut hit: Option<EdgeId> = None;
     let mut best_dist = f32::INFINITY;
 
     for edge in edges {
@@ -1076,7 +1065,6 @@ fn process_edge_clicks<ND, ED>(
         let edge_type = edge.edge_type.unwrap_or(config.default_edge_type);
         let hit_width = edge.interaction_width * transform.scale;
 
-        // Build screen-space polyline for hit testing
         let screen_points: Vec<egui::Pos2> = match edge_type {
             EdgeType::Bezier | EdgeType::SimpleBezier => {
                 let result = get_bezier_path(&ep, None);
@@ -1116,42 +1104,76 @@ fn process_edge_clicks<ND, ED>(
             }
         };
 
-        // Minimum distance from pointer to any segment of the polyline
-        let dist = min_dist_to_polyline(pp, &screen_points);
+        let dist = min_dist_to_polyline(pointer, &screen_points);
         if dist < hit_width / 2.0 && dist < best_dist {
             best_dist = dist;
-            clicked_edge = Some(edge.id.clone());
+            hit = Some(edge.id.clone());
         }
     }
 
-    if let Some(ref edge_id) = clicked_edge {
-        events.push_edge_click(edge_id.clone());
+    hit
+}
 
-        // Toggle selection: select the clicked edge, deselect all others
-        let shift = ui.input(|i| i.modifiers.shift);
-        return edges
-            .iter()
-            .map(|e| {
-                let select = if e.id == *edge_id {
-                    if shift {
-                        !e.selected
-                    } else {
-                        true
-                    }
-                } else if !shift {
-                    false
-                } else {
-                    e.selected
-                };
-                EdgeChange::Select {
-                    id: e.id.clone(),
-                    selected: select,
-                }
-            })
-            .collect();
+/// Run edge hit-testing for hover tracking and click-to-select. Populates
+/// [`FlowEvents::edge_hovered`] each frame when
+/// [`FlowConfig::track_edge_hover`] is `true`, and returns select/deselect
+/// [`EdgeChange`]s when the pointer was clicked this frame.
+#[allow(clippy::too_many_arguments)]
+fn process_edge_clicks<ND, ED>(
+    ui: &egui::Ui,
+    _canvas_id: egui::Id,
+    edges: &[Edge<ED>],
+    node_lookup: &HashMap<NodeId, crate::types::node::InternalNode<ND>>,
+    transform: &Transform,
+    config: &FlowConfig,
+    pointer_pos: Option<egui::Pos2>,
+    primary_pressed: bool,
+    events: &mut FlowEvents,
+) -> Vec<EdgeChange<ED>> {
+    let pp = match pointer_pos {
+        Some(p) => p,
+        None => return Vec::new(),
+    };
+
+    // Reuse a single hit-test for hover + click so the work is only done once
+    // per frame. Skip entirely when neither hover tracking nor a click this
+    // frame can consume the result.
+    if !config.track_edge_hover && !primary_pressed {
+        return Vec::new();
     }
 
-    Vec::new()
+    let hit = find_edge_under_pointer(edges, node_lookup, transform, config, pp);
+
+    if config.track_edge_hover {
+        if let Some(ref id) = hit {
+            events.set_edge_hovered(id.clone());
+        }
+    }
+
+    if !primary_pressed {
+        return Vec::new();
+    }
+
+    let edge_id = match hit {
+        Some(id) => id,
+        None => return Vec::new(),
+    };
+    events.push_edge_click(edge_id.clone());
+
+    let shift = ui.input(|i| i.modifiers.shift);
+    edges
+        .iter()
+        .map(|e| {
+            let select = if e.id == edge_id {
+                if shift { !e.selected } else { true }
+            } else if !shift {
+                false
+            } else {
+                e.selected
+            };
+            EdgeChange::Select { id: e.id.clone(), selected: select }
+        })
+        .collect()
 }
 
 /// Minimum distance from point `p` to the closest segment in `polyline`.

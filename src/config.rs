@@ -199,6 +199,13 @@ pub struct FlowConfig {
     /// per-frame cost for large graphs (especially `SmoothStep` edges) at the
     /// price of an AABB test per edge.
     pub cull_offscreen_edges: bool,
+    /// When `true`, each frame runs the edge hit-test against the pointer
+    /// position (whether or not the primary button is pressed) and exposes
+    /// the match via
+    /// [`FlowEvents::edge_hovered`](crate::events::FlowEvents::edge_hovered).
+    /// Cost is O(edges) per frame with a polyline sample per edge; disable
+    /// on very large graphs if you don't need hover cues. Default: `true`.
+    pub track_edge_hover: bool,
 }
 
 impl FlowConfig {
@@ -294,6 +301,7 @@ impl Default for FlowConfig {
             edge_label_bg_color: egui::Color32::from_rgba_unmultiplied(255, 255, 255, 230),
             edge_label_padding: 3.0,
             cull_offscreen_edges: true,
+            track_edge_hover: true,
         }
     }
 }
