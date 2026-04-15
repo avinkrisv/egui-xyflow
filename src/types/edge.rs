@@ -242,7 +242,7 @@ impl<D> Edge<D> {
         }
     }
 
-    /// Alias for [`Edge::new`] mirroring [`Node::builder`] naming.
+    /// Alias for [`Edge::new`] mirroring [`Node::builder`](crate::types::node::Node::builder) naming.
     pub fn builder(
         id: impl Into<Arc<str>>,
         source: impl Into<Arc<str>>,

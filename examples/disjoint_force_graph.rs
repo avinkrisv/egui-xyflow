@@ -4,11 +4,8 @@
 //! links = citations). Multiple disconnected components are kept in view
 //! via position forces (forceX / forceY).
 //!
-//! The force simulation faithfully matches D3.js defaults:
-//! - `forceManyBody()` with strength -30, repulsion proportional to 1/dist²
-//! - `forceLink()` with degree-based strength and bias
-//! - `forceX()` / `forceY()` with strength 0.1
-//! - `alphaTarget(0.3)` during drag, `alphaTarget(0)` on release
+//! Uses the core `egui_xyflow::physics` module for force simulation,
+//! matching D3.js defaults out of the box.
 //!
 //! Inspired by <https://observablehq.com/@d3/disjoint-force-directed-graph/2>.
 //!
@@ -17,6 +14,7 @@
 use std::collections::HashMap;
 
 use eframe::egui;
+use egui_xyflow::physics::{ForceSimulation, LinkForce, ManyBodyForce, PositionForce};
 use egui_xyflow::prelude::*;
 use egui_xyflow::EdgePosition;
 
@@ -32,15 +30,6 @@ const JSON_DATA: &str = include_str!("disjoint_force_graph_data.json");
 
 const BASE_RADIUS: f32 = 5.0; // minimum circle radius
 const RADIUS_SCALE: f32 = 1.0; // extra radius per data-radius unit
-
-// Force simulation — D3 defaults
-const CHARGE_STRENGTH: f32 = -30.0;
-const LINK_DISTANCE: f32 = 30.0;
-const POSITION_STRENGTH: f32 = 0.1;
-const VELOCITY_DECAY: f32 = 0.6; // D3 internal: 1 - api_decay(0.4)
-const ALPHA_MIN: f32 = 0.001;
-const ALPHA_DECAY: f32 = 0.0228; // 1 - pow(0.001, 1/300)
-const CHARGE_DIST_MIN2: f32 = 1.0;
 const INITIAL_RADIUS: f32 = 10.0; // phyllotaxis spiral scale
 
 // Group colours — "Cited Works" = blue, "Citing Patents" = orange
@@ -137,180 +126,6 @@ struct NodeData {
 #[derive(Debug, Clone, Default)]
 struct LinkData {
     value: f32,
-}
-
-// ---------------------------------------------------------------------------
-// Force simulation — matches D3 semantics
-// ---------------------------------------------------------------------------
-
-struct SimNode {
-    x: f32,
-    y: f32,
-    vx: f32,
-    vy: f32,
-    fx: Option<f32>,
-    fy: Option<f32>,
-}
-
-struct SimLink {
-    source: usize,
-    target: usize,
-    strength: f32,
-    bias: f32,
-}
-
-struct ForceSimulation {
-    nodes: Vec<SimNode>,
-    links: Vec<SimLink>,
-    alpha: f32,
-    alpha_target: f32,
-}
-
-impl ForceSimulation {
-    fn new(nodes: Vec<SimNode>, raw_links: Vec<(usize, usize)>) -> Self {
-        let n = nodes.len();
-        let mut degree = vec![0_usize; n];
-        for &(s, t) in &raw_links {
-            degree[s] += 1;
-            degree[t] += 1;
-        }
-
-        let links: Vec<SimLink> = raw_links
-            .iter()
-            .map(|&(s, t)| {
-                let ds = degree[s].max(1);
-                let dt = degree[t].max(1);
-                SimLink {
-                    source: s,
-                    target: t,
-                    strength: 1.0 / (ds.min(dt) as f32),
-                    bias: ds as f32 / (ds + dt) as f32,
-                }
-            })
-            .collect();
-
-        Self {
-            nodes,
-            links,
-            alpha: 1.0,
-            alpha_target: 0.0,
-        }
-    }
-
-    fn tick(&mut self) {
-        self.alpha += (self.alpha_target - self.alpha) * ALPHA_DECAY;
-        if self.alpha < ALPHA_MIN {
-            return;
-        }
-
-        let alpha = self.alpha;
-        self.apply_charge(alpha);
-        self.apply_links(alpha);
-        self.apply_position(alpha);
-
-        for node in &mut self.nodes {
-            if let Some(fx) = node.fx {
-                node.x = fx;
-                node.vx = 0.0;
-            } else {
-                node.vx *= VELOCITY_DECAY;
-                node.x += node.vx;
-            }
-            if let Some(fy) = node.fy {
-                node.y = fy;
-                node.vy = 0.0;
-            } else {
-                node.vy *= VELOCITY_DECAY;
-                node.y += node.vy;
-            }
-        }
-    }
-
-    fn apply_charge(&mut self, alpha: f32) {
-        let n = self.nodes.len();
-        let pos: Vec<(f32, f32)> = self.nodes.iter().map(|n| (n.x, n.y)).collect();
-
-        for i in 0..n {
-            if self.nodes[i].fx.is_some() {
-                continue;
-            }
-            for j in 0..n {
-                if i == j {
-                    continue;
-                }
-                let dx = pos[j].0 - pos[i].0;
-                let dy = pos[j].1 - pos[i].1;
-                let mut l = dx * dx + dy * dy;
-
-                if l == 0.0 {
-                    let jx = 1.0e-6 * ((i * 131 + j * 97) % 1000) as f32 - 0.5e-3;
-                    let jy = 1.0e-6 * ((i * 97 + j * 131) % 1000) as f32 - 0.5e-3;
-                    self.nodes[i].vx += jx * CHARGE_STRENGTH * alpha;
-                    self.nodes[i].vy += jy * CHARGE_STRENGTH * alpha;
-                    continue;
-                }
-
-                if l < CHARGE_DIST_MIN2 {
-                    l = (CHARGE_DIST_MIN2 * l).sqrt();
-                }
-
-                self.nodes[i].vx += dx * CHARGE_STRENGTH * alpha / l;
-                self.nodes[i].vy += dy * CHARGE_STRENGTH * alpha / l;
-            }
-        }
-    }
-
-    fn apply_links(&mut self, alpha: f32) {
-        let state: Vec<(f32, f32, f32, f32)> = self
-            .nodes
-            .iter()
-            .map(|n| (n.x, n.y, n.vx, n.vy))
-            .collect();
-
-        for link in &self.links {
-            let (sx, sy, svx, svy) = state[link.source];
-            let (tx, ty, tvx, tvy) = state[link.target];
-
-            let mut dx = tx + tvx - sx - svx;
-            let mut dy = ty + tvy - sy - svy;
-
-            if dx == 0.0 {
-                dx = 1.0e-6;
-            }
-            if dy == 0.0 {
-                dy = 1.0e-6;
-            }
-
-            let l = (dx * dx + dy * dy).sqrt();
-            let f = (l - LINK_DISTANCE) / l * alpha * link.strength;
-            let fx = dx * f;
-            let fy = dy * f;
-
-            let b = link.bias;
-            if self.nodes[link.target].fx.is_none() {
-                self.nodes[link.target].vx -= fx * b;
-                self.nodes[link.target].vy -= fy * b;
-            }
-            if self.nodes[link.source].fx.is_none() {
-                self.nodes[link.source].vx += fx * (1.0 - b);
-                self.nodes[link.source].vy += fy * (1.0 - b);
-            }
-        }
-    }
-
-    fn apply_position(&mut self, alpha: f32) {
-        for node in &mut self.nodes {
-            if node.fx.is_some() {
-                continue;
-            }
-            node.vx += (0.0 - node.x) * POSITION_STRENGTH * alpha;
-            node.vy += (0.0 - node.y) * POSITION_STRENGTH * alpha;
-        }
-    }
-
-    fn reheat(&mut self) {
-        self.alpha = 1.0;
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -468,7 +283,6 @@ impl DisjointForceApp {
 
         // D3 phyllotaxis spiral for initial positions
         let golden_angle = std::f32::consts::PI * (3.0 - 5.0_f32.sqrt());
-        let mut sim_nodes = Vec::with_capacity(n);
 
         for (i, ((label, group), &radius)) in graph
             .labels
@@ -494,19 +308,9 @@ impl DisjointForceApp {
                     .size(d, d)
                     .build(),
             );
-
-            sim_nodes.push(SimNode {
-                x,
-                y,
-                vx: 0.0,
-                vy: 0.0,
-                fx: None,
-                fy: None,
-            });
         }
 
         // Edges
-        let mut raw_links = Vec::with_capacity(num_edges);
         for (i, &(src, tgt, value)) in graph.links.iter().enumerate() {
             let mut edge = Edge::new(
                 format!("e{}", i),
@@ -516,10 +320,13 @@ impl DisjointForceApp {
             .edge_type(EdgeType::Straight);
             edge.data = Some(LinkData { value });
             state.add_edge(edge);
-            raw_links.push((src, tgt));
         }
 
-        let simulation = ForceSimulation::new(sim_nodes, raw_links);
+        // Force simulation — all D3 defaults via the core physics module
+        let simulation = ForceSimulation::from_state(&state)
+            .add_force("charge", ManyBodyForce::new().strength(-30.0))
+            .add_force("links", LinkForce::from_state(&state).distance(30.0))
+            .add_force("position", PositionForce::new().strength(0.1));
 
         Self {
             state,
@@ -531,47 +338,6 @@ impl DisjointForceApp {
             patent_count,
         }
     }
-
-    fn sync_drag_state(&mut self) {
-        let mut any_dragging = false;
-
-        for (i, flow_node) in self.state.nodes.iter().enumerate() {
-            if i >= self.simulation.nodes.len() {
-                break;
-            }
-            let sim = &mut self.simulation.nodes[i];
-
-            if flow_node.dragging {
-                any_dragging = true;
-                sim.fx = Some(flow_node.position.x);
-                sim.fy = Some(flow_node.position.y);
-            } else {
-                sim.fx = None;
-                sim.fy = None;
-            }
-        }
-
-        if any_dragging {
-            self.simulation.alpha_target = 0.3;
-            if self.simulation.alpha < self.simulation.alpha_target {
-                self.simulation.alpha = self.simulation.alpha_target;
-            }
-        } else {
-            self.simulation.alpha_target = 0.0;
-        }
-    }
-
-    fn sync_positions_to_state(&mut self) {
-        for (i, sim) in self.simulation.nodes.iter().enumerate() {
-            if i >= self.state.nodes.len() {
-                break;
-            }
-            if !self.state.nodes[i].dragging {
-                self.state.nodes[i].position = egui::pos2(sim.x, sim.y);
-            }
-        }
-        self.state.rebuild_lookup();
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -580,10 +346,8 @@ impl DisjointForceApp {
 
 impl eframe::App for DisjointForceApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Physics pipeline
-        self.sync_drag_state();
-        self.simulation.tick();
-        self.sync_positions_to_state();
+        // Physics: sync drag → tick forces → push positions back
+        self.simulation.step(&mut self.state);
 
         // -- Top bar --
         egui::TopBottomPanel::top("header").show(ctx, |ui| {
@@ -631,8 +395,8 @@ impl eframe::App for DisjointForceApp {
                 ui.add_space(12.0);
                 ui.separator();
                 ui.heading("Simulation");
-                ui.label(format!("Alpha: {:.4}", self.simulation.alpha));
-                ui.label(format!("Target: {:.1}", self.simulation.alpha_target));
+                ui.label(format!("Alpha: {:.4}", self.simulation.alpha()));
+                ui.label(format!("Target: {:.1}", self.simulation.alpha_target()));
                 ui.add_space(8.0);
                 ui.label(egui::RichText::new("Drag nodes to interact").size(11.0));
                 ui.label(egui::RichText::new("Scroll to zoom").size(11.0));
@@ -670,7 +434,7 @@ impl eframe::App for DisjointForceApp {
 
         // Keep repainting while simulation is active or nodes are being dragged
         let any_dragging = self.state.nodes.iter().any(|n| n.dragging);
-        if self.simulation.alpha > ALPHA_MIN || any_dragging {
+        if self.simulation.is_active() || any_dragging {
             ctx.request_repaint();
         }
     }

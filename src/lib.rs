@@ -54,6 +54,7 @@ pub mod edges;
 pub mod events;
 pub mod graph;
 pub mod interaction;
+pub mod physics;
 pub mod render;
 pub mod state;
 pub mod types;
@@ -110,6 +111,9 @@ pub use edges::straight::get_straight_path;
 // Interaction
 pub use interaction::resize::ResizeHandleKind;
 
+// Physics is a distinct optional subsystem — callers opt in explicitly via
+// `egui_xyflow::physics::*` rather than polluting the crate root / prelude.
+
 // ── Prelude ───────────────────────────────────────────────────────────────────
 
 /// Convenience glob import that brings the most commonly needed items into scope.
@@ -144,4 +148,6 @@ pub mod prelude {
     pub use crate::animation::viewport_animation::ViewportAnimation;
 
     pub use crate::interaction::resize::ResizeHandleKind;
+
+    // Physics is NOT re-exported here. Opt in with `use egui_xyflow::physics::*;`.
 }

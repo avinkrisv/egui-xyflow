@@ -1,6 +1,6 @@
 [package]
 name = "egui_xyflow"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.85"
 description = "An interactive node-graph editor widget for egui, inspired by xyflow (React Flow)"
@@ -87,6 +87,10 @@ path = "examples/hierarchical_edge_bundling.rs"
 [[example]]
 name = "stress_test"
 path = "examples/stress_test.rs"
+
+[[example]]
+name = "physics_bench"
+path = "examples/physics_bench.rs"
 
 [profile.release]
 lto = true
