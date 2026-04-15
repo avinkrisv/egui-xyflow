@@ -4,9 +4,13 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Position {
+    /// Top edge of the node.
     Top,
+    /// Right edge of the node.
     Right,
+    /// Bottom edge of the node.
     Bottom,
+    /// Left edge of the node.
     Left,
     /// Edges connect to the center of the node.
     ///
@@ -67,7 +71,9 @@ impl Position {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Dimensions {
+    /// Width in flow-space units (pixels at scale 1.0).
     pub width: f32,
+    /// Height in flow-space units (pixels at scale 1.0).
     pub height: f32,
 }
 
@@ -82,17 +88,20 @@ impl Dimensions {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct CoordinateExtent {
+    /// Top-left corner of the extent, in flow space.
     pub min: egui::Pos2,
+    /// Bottom-right corner of the extent, in flow space.
     pub max: egui::Pos2,
 }
 
 impl CoordinateExtent {
+    /// An unbounded extent spanning `±∞` on both axes.
     pub const INFINITE: Self = Self {
         min: egui::pos2(f32::NEG_INFINITY, f32::NEG_INFINITY),
         max: egui::pos2(f32::INFINITY, f32::INFINITY),
     };
 
-    /// Create a new extent from min/max corners.
+    /// Create a new extent from the top-left and bottom-right corners.
     pub fn new(min: egui::Pos2, max: egui::Pos2) -> Self {
         Self { min, max }
     }
@@ -102,8 +111,11 @@ impl CoordinateExtent {
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Transform {
+    /// Horizontal translation, in screen pixels, applied to flow-space coordinates.
     pub x: f32,
+    /// Vertical translation, in screen pixels, applied to flow-space coordinates.
     pub y: f32,
+    /// Zoom factor. `1.0` is identity; `>1.0` zooms in, `<1.0` zooms out.
     pub scale: f32,
 }
 

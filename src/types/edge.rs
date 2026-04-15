@@ -9,8 +9,6 @@ use super::position::Position;
 
 /// Per-edge visual style overrides. When set on an [`Edge`], these take
 /// priority over the global `FlowConfig` edge colour / stroke settings.
-/// Per-edge visual style overrides. When set on an [`Edge`], these take
-/// priority over the global `FlowConfig` edge colour / stroke settings.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EdgeStyle {
@@ -78,7 +76,9 @@ impl EdgeAnchor {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AnchorEndpoint {
+    /// The source (start) endpoint of the edge.
     Source,
+    /// The target (end) endpoint of the edge.
     Target,
 }
 
@@ -156,10 +156,15 @@ pub enum MarkerType {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct EdgeMarker {
+    /// Shape of the arrow head.
     pub marker_type: MarkerType,
+    /// Override colour; `None` inherits the edge's stroke colour.
     pub color: Option<egui::Color32>,
+    /// Override marker width in pixels; `None` uses the config default.
     pub width: Option<f32>,
+    /// Override marker height in pixels; `None` uses the config default.
     pub height: Option<f32>,
+    /// Override stroke width for open ([`MarkerType::Arrow`]) markers; ignored for closed markers.
     pub stroke_width: Option<f32>,
 }
 
@@ -170,24 +175,40 @@ pub struct EdgeMarker {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Edge<D = ()> {
+    /// Unique identifier within the graph.
     pub id: EdgeId,
+    /// Id of the source (from) node.
     pub source: NodeId,
+    /// Id of the target (to) node.
     pub target: NodeId,
+    /// Specific source handle id when the source node has multiple handles.
     pub source_handle: Option<String>,
+    /// Specific target handle id when the target node has multiple handles.
     pub target_handle: Option<String>,
+    /// Path algorithm override; `None` inherits [`FlowConfig::default_edge_type`](crate::config::FlowConfig::default_edge_type).
     pub edge_type: Option<EdgeType>,
+    /// When `true`, the edge is drawn with a moving dash pattern.
     #[cfg_attr(feature = "serde", serde(default))]
     pub animated: bool,
+    /// When `true`, the edge is skipped during rendering and hit-testing.
     #[cfg_attr(feature = "serde", serde(default))]
     pub hidden: bool,
+    /// Per-edge deletion override; `None` inherits the global config.
     pub deletable: Option<bool>,
+    /// Per-edge selection override; `None` inherits the global config.
     pub selectable: Option<bool>,
+    /// Arbitrary user payload attached to this edge.
     pub data: Option<D>,
+    /// Selection state, maintained by [`EdgeChange::Select`](crate::types::changes::EdgeChange::Select).
     #[cfg_attr(feature = "serde", serde(default))]
     pub selected: bool,
+    /// Arrow marker drawn at the source end.
     pub marker_start: Option<EdgeMarker>,
+    /// Arrow marker drawn at the target end.
     pub marker_end: Option<EdgeMarker>,
+    /// Explicit render order among edges. Higher values draw on top.
     pub z_index: Option<i32>,
+    /// Width in pixels of the invisible hit-testing stroke around the edge.
     #[cfg_attr(feature = "serde", serde(default = "default_interaction_width"))]
     pub interaction_width: f32,
     /// User-defined source endpoint anchor. When set, overrides handle position.
@@ -333,11 +354,17 @@ impl<D> Edge<D> {
 /// Resolved positions for rendering an edge.
 #[derive(Debug, Clone, Copy)]
 pub struct EdgePosition {
+    /// Source endpoint X in flow space.
     pub source_x: f32,
+    /// Source endpoint Y in flow space.
     pub source_y: f32,
+    /// Target endpoint X in flow space.
     pub target_x: f32,
+    /// Target endpoint Y in flow space.
     pub target_y: f32,
+    /// Resolved side of the source node the edge leaves from.
     pub source_pos: Position,
+    /// Resolved side of the target node the edge arrives at.
     pub target_pos: Position,
 }
 
@@ -347,8 +374,12 @@ pub struct EdgePosition {
 /// common case (2–7 control points).
 #[derive(Debug, Clone)]
 pub struct EdgePathResult {
+    /// Ordered control/vertex points forming the edge path, in flow space.
     pub points: SmallVec<[egui::Pos2; 8]>,
+    /// Suggested anchor point for rendering the edge's label.
     pub label_pos: egui::Pos2,
+    /// X coordinate of the path's geometric center.
     pub center_x: f32,
+    /// Y coordinate of the path's geometric center.
     pub center_y: f32,
 }

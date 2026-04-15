@@ -130,10 +130,12 @@ impl LinkForce {
         self
     }
 
+    /// Mutator for [`Self::distance`].
     pub fn set_distance(&mut self, distance: f32) {
         self.distance = distance;
     }
 
+    /// Current target rest-length.
     pub fn get_distance(&self) -> f32 {
         self.distance
     }

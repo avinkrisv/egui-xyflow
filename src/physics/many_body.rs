@@ -35,6 +35,8 @@ impl Default for ManyBodyForce {
 }
 
 impl ManyBodyForce {
+    /// Create with D3 defaults: strength −30, θ = 0.9, `distance_min` = 1,
+    /// `distance_max` = ∞.
     pub fn new() -> Self {
         Self::default()
     }
@@ -66,10 +68,12 @@ impl ManyBodyForce {
         self
     }
 
+    /// Mutator for [`Self::strength`].
     pub fn set_strength(&mut self, strength: f32) {
         self.strength = strength;
     }
 
+    /// Current default strength.
     pub fn get_strength(&self) -> f32 {
         self.strength
     }

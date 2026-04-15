@@ -35,26 +35,33 @@ impl Default for CenterForce {
 }
 
 impl CenterForce {
+    /// Create with D3 defaults: target `(0, 0)`, strength 1.0.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set the target point the centroid is rigidly shifted toward.
     pub fn target(mut self, x: f32, y: f32) -> Self {
         self.target_x = x;
         self.target_y = y;
         self
     }
 
+    /// Set the fraction of the centroid offset applied per tick. Default: 1.0
+    /// (full snap, matching D3). Values below 1.0 ease toward the target over
+    /// multiple ticks.
     pub fn strength(mut self, strength: f32) -> Self {
         self.strength = strength;
         self
     }
 
+    /// Mutator for [`Self::target`].
     pub fn set_target(&mut self, x: f32, y: f32) {
         self.target_x = x;
         self.target_y = y;
     }
 
+    /// Mutator for [`Self::strength`].
     pub fn set_strength(&mut self, strength: f32) {
         self.strength = strength;
     }

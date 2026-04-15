@@ -65,32 +65,54 @@ pub enum NodeExtent {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Node<D = ()> {
+    /// Unique identifier within the graph.
     pub id: NodeId,
+    /// Position in flow space, relative to the parent when [`parent_id`](Self::parent_id) is set.
     pub position: egui::Pos2,
+    /// Arbitrary user payload attached to this node.
     pub data: D,
+    /// Custom node type key, used to route to a registered [`crate::render::node_renderer::NodeWidget`].
     pub node_type: Option<String>,
+    /// Default side from which outgoing edges leave; falls back to [`FlowConfig`](crate::config::FlowConfig).
     pub source_position: Option<Position>,
+    /// Default side at which incoming edges arrive; falls back to [`FlowConfig`](crate::config::FlowConfig).
     pub target_position: Option<Position>,
+    /// When `true`, the node and its handles/edges skip rendering and hit-testing.
     #[cfg_attr(feature = "serde", serde(default))]
     pub hidden: bool,
+    /// Selection state, maintained by [`NodeChange::Select`](crate::types::changes::NodeChange::Select).
     #[cfg_attr(feature = "serde", serde(default))]
     pub selected: bool,
+    /// `true` while the user is actively dragging the node.
     #[cfg_attr(feature = "serde", serde(default))]
     pub dragging: bool,
+    /// Per-node drag override; `None` inherits [`FlowConfig::nodes_draggable`](crate::config::FlowConfig::nodes_draggable).
     pub draggable: Option<bool>,
+    /// Per-node selection override; `None` inherits the global config.
     pub selectable: Option<bool>,
+    /// Per-node connection override; `None` inherits the global config.
     pub connectable: Option<bool>,
+    /// Per-node deletion override; `None` inherits the global config.
     pub deletable: Option<bool>,
+    /// Explicit width in flow-space pixels. When `None`, [`measured`](Self::measured) is used.
     pub width: Option<f32>,
+    /// Explicit height in flow-space pixels. When `None`, [`measured`](Self::measured) is used.
     pub height: Option<f32>,
+    /// Optional parent node; this node's [`position`](Self::position) becomes relative to the parent.
     pub parent_id: Option<NodeId>,
+    /// Explicit render order. Higher values draw on top; `None` uses a default derived from selection/drag state.
     pub z_index: Option<i32>,
+    /// Constrains how far the node can be dragged.
     pub extent: Option<NodeExtent>,
+    /// When `true`, the parent's bounds grow to keep this child visible.
     #[cfg_attr(feature = "serde", serde(default))]
     pub expand_parent: bool,
+    /// Normalised origin offset `[x, y]` in `0.0..=1.0`, controlling which point on the node is anchored to [`position`](Self::position).
     pub origin: Option<NodeOrigin>,
+    /// Connection handles attached to this node.
     #[cfg_attr(feature = "serde", serde(default))]
     pub handles: Vec<NodeHandle>,
+    /// Dimensions measured during rendering; populated by the widget, not the user.
     pub measured: Option<Dimensions>,
 }
 

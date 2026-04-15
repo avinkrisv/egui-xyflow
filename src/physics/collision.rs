@@ -65,6 +65,7 @@ impl CollisionForce {
         self
     }
 
+    /// Mutator for [`Self::strength`].
     pub fn set_strength(&mut self, strength: f32) {
         self.strength = strength;
     }

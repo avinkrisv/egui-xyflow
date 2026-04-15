@@ -1,7 +1,11 @@
 //! # egui_xyflow
 //!
-//! A node graph editor widget for [egui](https://github.com/emilk/egui),
-//! inspired by [xyflow](https://xyflow.com/) (React Flow / Svelte Flow).
+//! An interactive node-graph editor widget for
+//! [egui](https://github.com/emilk/egui), inspired by
+//! [xyflow](https://xyflow.com/) (React Flow / Svelte Flow). Supports
+//! drag-and-drop nodes, handle-to-handle edge connections, pan/zoom,
+//! multi-select, resize, minimap, edge labels, and an optional
+//! force-directed layout subsystem.
 //!
 //! ## Quick start
 //!
@@ -31,7 +35,7 @@
 //!                 .handle(NodeHandle::target(Position::Left))
 //!                 .build(),
 //!         );
-//!         state.add_edge(Edge::new("e1-2", "1", "2"));
+//!         state.add_edge(Edge::builder("e1-2", "1", "2").label("flow"));
 //!
 //!         Self { state }
 //!     }
@@ -40,11 +44,125 @@
 //! impl eframe::App for MyApp {
 //!     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
 //!         egui::CentralPanel::default().show(ctx, |ui| {
-//!             FlowCanvas::new(&mut self.state, &DefaultNodeWidget).show(ui);
+//!             let events =
+//!                 FlowCanvas::new(&mut self.state, &DefaultNodeWidget).show(ui);
+//!             for conn in &events.connections_made {
+//!                 println!("new edge: {} -> {}", conn.source, conn.target);
+//!             }
 //!         });
 //!     }
 //! }
 //! ```
+//!
+//! ## Architecture
+//!
+//! Every frame follows the same cycle:
+//!
+//! ```text
+//! FlowState  →  FlowCanvas::show()  →  FlowEvents  →  apply changes  →  FlowState
+//! ```
+//!
+//! 1. [`FlowState`] owns the graph: nodes, edges, viewport, config,
+//!    selection state.
+//! 2. [`FlowCanvas`] renders the graph and processes input, returning
+//!    [`FlowEvents`] that describe what happened this frame (clicks,
+//!    drags, connections, selection changes, deletions, etc.).
+//! 3. Most mutations are represented as [`NodeChange`] / [`EdgeChange`]
+//!    enum variants and applied atomically via
+//!    [`FlowState::apply_node_changes`] and
+//!    [`FlowState::apply_edge_changes`].
+//!
+//! ### Generic parameters
+//!
+//! The library is parameterised over two user-owned types:
+//!
+//! - `ND` — custom data attached to each [`Node`].
+//! - `ED` — custom data attached to each [`Edge`].
+//!
+//! Use `()` when you don't need custom data, or `String` for simple
+//! labels, or a struct of your own.
+//!
+//! ### Coordinate spaces
+//!
+//! Two coordinate systems convert via [`flow_to_screen`] and
+//! [`screen_to_flow`] using a [`Transform`]:
+//!
+//! - **Flow space** — graph coordinates you set on nodes. Unbounded.
+//! - **Screen space** — pixel coordinates inside the canvas rect.
+//!
+//! ### Render order
+//!
+//! Bottom-to-top: background → edges (with optional viewport culling) →
+//! connection drag line → nodes (z-ordered) → handles → resize handles →
+//! selection rectangle → minimap.
+//!
+//! ## Customisation points
+//!
+//! - [`NodeWidget<D>`](render::node_renderer::NodeWidget) — implement
+//!   `size()` and `show()` for custom node rendering. Built-ins:
+//!   [`DefaultNodeWidget`] (for `Node<String>`) and [`UnitNodeWidget`]
+//!   (for `Node<()>`).
+//! - [`EdgeWidget<ED>`](render::canvas::EdgeWidget) — implement to render
+//!   custom edge paths instead of the built-in [`EdgeType`] algorithms.
+//! - [`ConnectionValidator`] — reject prospective connections (e.g. no
+//!   self-loops, typed handles).
+//! - [`FlowConfig`] — 60+ knobs for pan/zoom, selection, colour, edge
+//!   defaults, handle appearance, grid snapping, animation, viewport
+//!   culling, edge labels, etc.
+//!
+//! ## Physics (force-directed layout)
+//!
+//! The [`physics`] module provides a D3-compatible force simulation
+//! usable alongside (or instead of) hand-placed node positions:
+//!
+//! ```rust,no_run
+//! # use egui_xyflow::prelude::*;
+//! use egui_xyflow::physics::*;
+//!
+//! # let mut state: FlowState<(), ()> = FlowState::new(FlowConfig::default());
+//! let mut sim = ForceSimulation::from_state(&state)
+//!     .add_force("charge",   ManyBodyForce::new().strength(-30.0))
+//!     .add_force("links",    LinkForce::from_state(&state).distance(30.0))
+//!     .add_force("position", PositionForce::new().strength(0.1))
+//!     .add_force("center",   CenterForce::new());
+//!
+//! // Each frame — `false` means the state was mutated, rebuild the sim.
+//! if !sim.step(&mut state) {
+//!     sim = ForceSimulation::from_state(&state);
+//! }
+//! ```
+//!
+//! The charge force uses a Barnes–Hut quadtree (θ = 0.9 by default), so
+//! it scales roughly O(n log n) with node count. `physics` is **not**
+//! re-exported from the prelude — import it explicitly.
+//!
+//! ## Feature flags
+//!
+//! - `serde` *(default)* — derive `Serialize` / `Deserialize` on
+//!   [`FlowState`], [`Node`], [`Edge`], and most config/viewport types.
+//!   Disable for no-std-adjacent builds or to drop the `serde`
+//!   dependency.
+//!
+//! ## Examples
+//!
+//! The repository ships with 17 runnable examples:
+//!
+//! ```text
+//! cargo run --example basic_flow                   # getting started
+//! cargo run --example edge_labels                  # labels + viewport culling
+//! cargo run --example data_pipeline                # pipeline with validation
+//! cargo run --example disjoint_force_graph         # physics: citation network
+//! cargo run --release --example physics_bench      # physics timing harness
+//! ```
+//!
+//! See [the repo](https://github.com/avinkrisv/egui_xyflow) for the
+//! complete list.
+//!
+//! ## Compatibility
+//!
+//! Built against `egui` 0.31. MSRV: 1.85 (edition 2024).
+
+#![warn(missing_docs)]
 
 // ── Module tree ───────────────────────────────────────────────────────────────
 

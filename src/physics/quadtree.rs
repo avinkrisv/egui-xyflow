@@ -36,16 +36,26 @@ enum Cell {
 /// value, and centre of mass.
 #[derive(Debug, Clone)]
 pub struct CellSummary {
+    /// Left edge of the cell's bounding box.
     pub x1: f32,
+    /// Top edge of the cell's bounding box.
     pub y1: f32,
+    /// Right edge of the cell's bounding box.
     pub x2: f32,
+    /// Bottom edge of the cell's bounding box.
     pub y2: f32,
+    /// x-coordinate of the value-weighted centre of mass of this subtree.
     pub cx: f32,
+    /// y-coordinate of the value-weighted centre of mass of this subtree.
     pub cy: f32,
+    /// Sum of child `value`s in this subtree (typically total charge strength).
     pub value: f32,
+    /// `true` if this cell is a leaf (holds zero or more coincident points
+    /// and no children).
     pub is_leaf: bool,
     /// Indices of points contained in this cell (only populated for leaves).
     pub points: Vec<(usize, f32, f32, f32)>,
+    /// Per-quadrant child summaries (NW, NE, SW, SE). `None` for empty quadrants.
     pub children: [Option<Box<CellSummary>>; 4],
 }
 
@@ -116,14 +126,17 @@ impl QuadTree {
         Self { root, count: points.len() }
     }
 
+    /// Returns `true` if the tree contains no points.
     pub fn is_empty(&self) -> bool {
         self.count == 0
     }
 
+    /// Number of points inserted into the tree.
     pub fn len(&self) -> usize {
         self.count
     }
 
+    /// Root [`CellSummary`], covering the full bounding square.
     pub fn root(&self) -> &CellSummary {
         &self.root
     }

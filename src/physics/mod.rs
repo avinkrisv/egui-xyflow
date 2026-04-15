@@ -231,26 +231,36 @@ impl ForceSimulation {
 
     // ── Accessors ────────────────────────────────────────────────────────
 
+    /// Read-only access to the simulation's nodes.
     pub fn nodes(&self) -> &[SimNode] {
         &self.nodes
     }
 
+    /// Mutable access to the simulation's nodes. Use to pin nodes via
+    /// `fx`/`fy` or to nudge positions outside the force pipeline.
     pub fn nodes_mut(&mut self) -> &mut [SimNode] {
         &mut self.nodes
     }
 
+    /// Number of simulated nodes.
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
 
+    /// Current alpha (simulation temperature). Starts at 1.0 and decays
+    /// toward [`alpha_target`](Self::alpha_target) each tick.
     pub fn alpha(&self) -> f32 {
         self.alpha
     }
 
+    /// Current alpha target — the value alpha is decaying toward. Normally 0;
+    /// raised to [`drag_alpha_target`](Self::drag_alpha_target) while a node
+    /// is being dragged.
     pub fn alpha_target(&self) -> f32 {
         self.alpha_target
     }
 
+    /// Mutator for [`Self::alpha_target`].
     pub fn set_alpha_target(&mut self, target: f32) {
         self.alpha_target = target;
     }

@@ -55,6 +55,9 @@ use crate::types::position::Transform;
 ///
 /// Pass an implementor to [`FlowCanvas::connection_validator`].
 pub trait ConnectionValidator {
+    /// Return `true` to accept the prospective `connection`, `false` to
+    /// reject it. `existing_edges` is a type-erased snapshot of every edge
+    /// currently in the graph, suitable for topology-aware checks.
     fn is_valid_connection(&self, connection: &Connection, existing_edges: &[EdgeInfo<'_>]) -> bool;
 }
 
@@ -76,6 +79,10 @@ impl ConnectionValidator for AllowAllConnections {
 /// parameter allows converting arbitrary flow-space coordinates to screen
 /// space via `x * transform.scale + transform.x`.
 pub trait EdgeWidget<ED> {
+    /// Paint `edge` onto `painter`. `pos` carries screen-space source/target
+    /// endpoints; `time` is seconds since app start (for animated edges);
+    /// `transform` converts flow-space coordinates to screen space as
+    /// `x * transform.scale + transform.x`.
     fn show(
         &self,
         painter: &egui::Painter,
@@ -147,6 +154,9 @@ where
     ED: Clone + Default,
     NW: NodeWidget<ND>,
 {
+    /// Build a canvas bound to `state` that paints each node with
+    /// `node_widget`. The returned value is consumed by [`show`](Self::show);
+    /// use the builder methods to attach a validator or edge widget.
     pub fn new(state: &'a mut FlowState<ND, ED>, node_widget: &'a NW) -> Self {
         Self {
             state,

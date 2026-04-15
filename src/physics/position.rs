@@ -54,15 +54,18 @@ impl PositionForce {
         self
     }
 
+    /// Mutator for [`Self::target`].
     pub fn set_target(&mut self, x: f32, y: f32) {
         self.target_x = x;
         self.target_y = y;
     }
 
+    /// Mutator for [`Self::strength`].
     pub fn set_strength(&mut self, strength: f32) {
         self.strength = strength;
     }
 
+    /// Current pull strength.
     pub fn get_strength(&self) -> f32 {
         self.strength
     }

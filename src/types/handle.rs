@@ -21,13 +21,22 @@ pub enum HandleType {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Handle {
+    /// Optional handle identifier; distinguishes multiple handles of the same
+    /// [`HandleType`] on a node. `None` when the node has a single unnamed handle.
     pub id: Option<String>,
+    /// Id of the node that owns this handle.
     pub node_id: Arc<str>,
+    /// X offset of the handle's top-left corner relative to the node origin, in flow space.
     pub x: f32,
+    /// Y offset of the handle's top-left corner relative to the node origin, in flow space.
     pub y: f32,
+    /// Which side of the node the handle sits on.
     pub position: Position,
+    /// Whether this handle is a source or target.
     pub handle_type: HandleType,
+    /// Handle hit-area width in flow-space pixels.
     pub width: f32,
+    /// Handle hit-area height in flow-space pixels.
     pub height: f32,
 }
 
@@ -42,14 +51,24 @@ impl Handle {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct NodeHandle {
+    /// Optional handle identifier; required when a node has multiple handles
+    /// of the same [`HandleType`] so edges can target a specific one.
     pub id: Option<String>,
+    /// Whether this handle accepts outgoing (`Source`) or incoming (`Target`) connections.
     pub handle_type: HandleType,
+    /// Which side of the node this handle is placed on.
     pub position: Position,
+    /// Optional manual X offset relative to the node origin. Defaults to `0.0`,
+    /// in which case [`Position`] drives placement along its side.
     #[cfg_attr(feature = "serde", serde(default))]
     pub x: f32,
+    /// Optional manual Y offset relative to the node origin. Defaults to `0.0`,
+    /// in which case [`Position`] drives placement along its side.
     #[cfg_attr(feature = "serde", serde(default))]
     pub y: f32,
+    /// Override for the handle's hit-area width; falls back to `FlowConfig`.
     pub width: Option<f32>,
+    /// Override for the handle's hit-area height; falls back to `FlowConfig`.
     pub height: Option<f32>,
 }
 

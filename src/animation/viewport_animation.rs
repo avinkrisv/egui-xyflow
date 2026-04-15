@@ -5,11 +5,20 @@ use crate::types::viewport::Viewport;
 /// Animates viewport transitions with easing.
 #[derive(Clone)]
 pub struct ViewportAnimation {
+    /// Viewport at the start of the animation.
     pub from: Viewport,
+    /// Viewport the animation is interpolating toward.
     pub to: Viewport,
+    /// Total duration of the animation in seconds.
     pub duration: f32,
+    /// Wall-clock time (seconds since app start, as provided by egui) when the
+    /// animation began.
     pub start_time: f64,
+    /// Easing function mapping normalised progress `t ∈ [0, 1]` to an eased
+    /// value; applied to every axis (x, y, zoom).
     pub ease: fn(f32) -> f32,
+    /// `false` once the animation has reached `to`; inspected by the owner to
+    /// decide whether to drop it.
     pub active: bool,
 }
 

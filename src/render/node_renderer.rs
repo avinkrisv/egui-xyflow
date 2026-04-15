@@ -10,7 +10,14 @@ use crate::types::position::Transform;
 
 /// Trait for custom node rendering.
 pub trait NodeWidget<D> {
+    /// Return the node's size in flow-space units. Called before `show` so the
+    /// canvas can lay out handles and hit-test. Typical implementations read
+    /// `node.width` / `node.height` with fallbacks to the config defaults.
     fn size(&self, node: &Node<D>, config: &FlowConfig) -> egui::Vec2;
+    /// Paint the node into `screen_rect`. `hovered` is set by the canvas's
+    /// hit-test; `transform` is the current flow-to-screen transform for
+    /// implementations that need to draw at a fixed pixel size regardless of
+    /// zoom.
     fn show(
         &self,
         painter: &egui::Painter,

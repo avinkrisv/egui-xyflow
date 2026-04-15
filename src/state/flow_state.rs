@@ -22,13 +22,31 @@ use super::changes::{apply_edge_changes, apply_node_changes};
 
 /// Central state for the flow graph.
 pub struct FlowState<ND = (), ED = ()> {
+    /// User-facing nodes in insertion order. Mutated through
+    /// [`add_node`](Self::add_node) / [`apply_node_changes`](Self::apply_node_changes).
     pub nodes: Vec<Node<ND>>,
+    /// User-facing edges. Mutated through [`add_edge`](Self::add_edge) /
+    /// [`apply_edge_changes`](Self::apply_edge_changes).
     pub edges: Vec<Edge<ED>>,
+    /// Internal lookup cache keyed by [`NodeId`], holding per-node computed
+    /// data (absolute position, z-index, handle bounds). Rebuilt by the state
+    /// on structural changes; patched in place on position/dimensions/select.
     pub node_lookup: HashMap<NodeId, InternalNode<ND>>,
+    /// Current viewport (pan offset + zoom). Mutated by the canvas each frame
+    /// in response to pan/zoom input and by animation ticks.
     pub viewport: Viewport,
+    /// Active drag-to-connect state (if any). Mutated by the canvas as the
+    /// user drags from a handle.
     pub connection_state: ConnectionState,
+    /// Screen-space rectangle of an in-progress box-selection. `None` when
+    /// the user is not drawing a selection. Set by the canvas.
     pub selection_rect: Option<egui::Rect>,
+    /// Configuration applied to rendering, interaction, and defaults. Owned
+    /// by the state so builders and validators can read it without extra
+    /// threading.
     pub config: FlowConfig,
+    /// Currently running viewport animation, if any. Set by the `fit_*` /
+    /// `zoom_*` / `set_viewport` helpers and cleared once complete.
     pub viewport_animation: Option<ViewportAnimation>,
     /// Tracks whether any edge is animated (for repaint requests).
     pub has_animated_edges: bool,

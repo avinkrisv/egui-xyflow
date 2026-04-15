@@ -22,17 +22,30 @@ use crate::types::position::Transform;
 /// One of the eight resize handles that surround a selected node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResizeHandleKind {
+    /// Top-left corner handle — resizes width and height, anchored at the
+    /// bottom-right corner.
     TopLeft,
+    /// Top-edge midpoint — resizes height only, anchored at the bottom edge.
     Top,
+    /// Top-right corner handle — resizes width and height, anchored at the
+    /// bottom-left corner.
     TopRight,
+    /// Right-edge midpoint — resizes width only, anchored at the left edge.
     Right,
+    /// Bottom-right corner handle — resizes width and height, anchored at the
+    /// top-left corner (origin stays put).
     BottomRight,
+    /// Bottom-edge midpoint — resizes height only, anchored at the top edge.
     Bottom,
+    /// Bottom-left corner handle — resizes width and height, anchored at the
+    /// top-right corner.
     BottomLeft,
+    /// Left-edge midpoint — resizes width only, anchored at the right edge.
     Left,
 }
 
 impl ResizeHandleKind {
+    /// All eight handles in clockwise order starting at the top-left corner.
     pub const ALL: [ResizeHandleKind; 8] = [
         ResizeHandleKind::TopLeft,
         ResizeHandleKind::Top,

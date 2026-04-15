@@ -18,7 +18,7 @@ A node graph editor for [egui](https://github.com/emilk/egui). Build interactive
 </table>
 
 <details>
-<summary>See all 15 examples</summary>
+<summary>See all 17 examples</summary>
 
 <table>
 <tr>
@@ -61,7 +61,7 @@ A node graph editor for [egui](https://github.com/emilk/egui). Build interactive
 - **Drag-and-drop nodes** with box-select and multi-select
 - **Connect nodes** by dragging between handles, with optional validation rules
 - **5 edge types** — Bezier, SmoothStep, Step, Straight, SimpleBezier
-- **Styled edges** — per-edge colors, stroke widths, glow effects, and dash animations
+- **Styled edges** — per-edge colors, stroke widths, glow effects, dash animations, and text labels
 - **Pan & zoom** — scroll, pinch, double-click, or keyboard shortcuts
 - **Minimap** for navigating large graphs
 - **Resizable nodes** — drag handles to resize
@@ -69,6 +69,8 @@ A node graph editor for [egui](https://github.com/emilk/egui). Build interactive
 - **Snap to grid** for aligned layouts
 - **Background patterns** — dots, lines, or cross
 - **Animated viewport transitions** with easing functions
+- **Viewport edge culling** — off-screen edges skip path compute (toggle via `FlowConfig::cull_offscreen_edges`)
+- **Force-directed layout** — built-in `egui_xyflow::physics` module with Barnes–Hut charge, link, position, collision, and center forces (D3-compatible defaults)
 - **Serde support** — save and load graph state (enabled by default)
 - **Fully customizable** — 60+ options in `FlowConfig`, plus traits for custom node/edge rendering
 
@@ -78,7 +80,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-egui_xyflow = "0.1"
+egui_xyflow = "0.4"
 eframe = "0.31"
 ```
 
@@ -180,18 +182,24 @@ Node::builder("my-node")
 ## Building Edges
 
 ```rust,ignore
-// Simple edge
-Edge::new("e1", "source-node", "target-node")
+// Simple edge (Edge::new and Edge::builder are interchangeable)
+Edge::builder("e1", "source-node", "target-node")
 
-// Styled edge
-Edge::new("e2", "a", "b")
+// Styled edge with a text label
+Edge::builder("e2", "a", "b")
     .edge_type(EdgeType::SmoothStep)
     .color(egui::Color32::from_rgb(59, 130, 246))
     .stroke_width(3.0)
     .glow(egui::Color32::from_rgba_unmultiplied(59, 130, 246, 60), 12.0)
     .animated(true)
+    .label("1,284 rows/s")
     .marker_end_arrow()
 ```
+
+Label font/color/background/padding are configured on `FlowConfig`
+(`edge_label_font_size`, `edge_label_color`, `edge_label_bg_color`,
+`edge_label_padding`). Set `edge_label_bg_color` to
+`Color32::TRANSPARENT` to disable the label background.
 
 **Edge types:**
 | Type | Description |
@@ -396,6 +404,49 @@ FlowCanvas::new(&mut state, &node_widget)
     .show(ui);
 ```
 
+## Physics (Force-Directed Layout)
+
+The `egui_xyflow::physics` module provides a D3-compatible force simulation
+for laying out graphs automatically. Charge uses a Barnes–Hut quadtree
+(θ = 0.9 by default) so it stays cheap for large graphs.
+
+```rust,ignore
+use egui_xyflow::physics::*;
+
+// Build a simulation from your FlowState.
+let mut sim = ForceSimulation::from_state(&state)
+    .add_force("charge",   ManyBodyForce::new().strength(-30.0))
+    .add_force("links",    LinkForce::from_state(&state).distance(30.0))
+    .add_force("position", PositionForce::new().strength(0.1))
+    .add_force("center",   CenterForce::new());
+
+// Each frame — reads drag state, ticks forces, writes positions back.
+// Returns `false` if `state` was mutated since construction; rebuild on false.
+if !sim.step(&mut state) {
+    sim = ForceSimulation::from_state(&state); // rebuild after add/remove
+}
+```
+
+Built-in forces:
+
+| Force | Purpose | D3 analogue |
+|-------|---------|-------------|
+| `ManyBodyForce` | Pairwise repulsion/attraction (Barnes–Hut) | `forceManyBody` |
+| `LinkForce` | Spring between connected node pairs | `forceLink` |
+| `PositionForce` | Pull toward a target point | `forceX` / `forceY` |
+| `CollisionForce` | Prevent overlap based on `SimNode.radius` | `forceCollide` |
+| `CenterForce` | Rigidly recenter the graph centroid | `forceCenter` |
+
+Or implement the `Force` trait for custom behaviour. Per-node overrides
+(`radius`, `strength`) can be set on `SimNode` directly, or derived from
+your node data via `ForceSimulation::from_state_with(&state, opts)`.
+
+The module is **not** in the crate prelude — import it explicitly:
+`use egui_xyflow::physics::*;`.
+
+See `examples/disjoint_force_graph.rs` for a full citation-network
+layout and `examples/physics_bench.rs` for a timing harness.
+
 ## Configuration
 
 `FlowConfig` has 60+ options. Here are the most commonly adjusted:
@@ -434,33 +485,38 @@ See the [docs](https://docs.rs/egui_xyflow) for the full list of options.
 
 ## Examples
 
-Clone the repo and run any of the 15 included examples:
+Clone the repo and run any of the 17 included examples:
 
 ```bash
-git clone https://github.com/avinkrism4pro/egui_xyflow
+git clone https://github.com/avinkrisv/egui_xyflow
 cd egui_xyflow
 
-cargo run --example basic_flow               # getting started
-cargo run --example data_pipeline            # pipeline with validation
-cargo run --example state_machine            # state diagram
-cargo run --example neural_network           # layer visualizer
-cargo run --example dependency_graph         # package dependencies
-cargo run --example logic_gates              # circuit diagram
-cargo run --example collapsible_tree         # expand/collapse hierarchy
-cargo run --example radial_tree              # radial layout
-cargo run --example sankey_diagram           # flow quantities
-cargo run --example chord_diagram            # relationship matrix
-cargo run --example arc_diagram              # arc connections
-cargo run --example temporal_force_graph     # force-directed layout
-cargo run --example disjoint_force_graph     # clustered force layout
+cargo run --example basic_flow                  # getting started
+cargo run --example edge_labels                 # edge labels + viewport culling
+cargo run --example data_pipeline               # pipeline with validation
+cargo run --example state_machine               # state diagram
+cargo run --example neural_network              # layer visualizer
+cargo run --example dependency_graph            # package dependencies
+cargo run --example logic_gates                 # circuit diagram
+cargo run --example collapsible_tree            # expand/collapse hierarchy
+cargo run --example radial_tree                 # radial layout
+cargo run --example sankey_diagram              # flow quantities
+cargo run --example chord_diagram               # relationship matrix
+cargo run --example arc_diagram                 # arc connections
+cargo run --example temporal_force_graph        # force-directed layout
+cargo run --example disjoint_force_graph        # clustered force layout
 cargo run --example hierarchical_edge_bundling  # bundled edges
-cargo run --example stress_test              # performance benchmark
+cargo run --example stress_test                 # rendering stress test
+cargo run --release --example physics_bench     # physics timing harness
 ```
 
 ## Compatibility
 
 | egui_xyflow | egui |
 |-------------|------|
+| 0.4         | 0.31 |
+| 0.3         | 0.31 |
+| 0.2         | 0.31 |
 | 0.1         | 0.31 |
 
 ## License
