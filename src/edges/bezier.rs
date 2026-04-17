@@ -29,13 +29,15 @@ fn get_control_with_curvature(
         Position::Top => egui::pos2(x1, y1 - calculate_control_offset(y1 - y2, c)),
         Position::Bottom => egui::pos2(x1, y1 + calculate_control_offset(y2 - y1, c)),
         Position::Center | Position::Closest => {
-            // For center-connected edges, offset the control point toward the
-            // other endpoint along the dominant axis for a natural curve.
             let dx = x2 - x1;
             let dy = y2 - y1;
             let dist = (dx * dx + dy * dy).sqrt().max(1.0);
             let offset = calculate_control_offset(dist, c);
-            egui::pos2(x1 + dx / dist * offset, y1 + dy / dist * offset)
+            let sign = if (x1, y1) < (x2, y2) { 1.0 } else { -1.0 };
+            egui::pos2(
+                x1 + sign * (-dy / dist) * offset,
+                y1 + sign * (dx / dist) * offset,
+            )
         }
     }
 }
