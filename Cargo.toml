@@ -1,6 +1,6 @@
 [package]
 name = "egui_xyflow"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2024"
 rust-version = "1.85"
 description = "An interactive node-graph editor widget for egui, inspired by xyflow (React Flow)"
