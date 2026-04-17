@@ -226,6 +226,22 @@ impl FlowConfig {
         let r = self.node_corner_radius.round().clamp(0.0, 255.0) as u8;
         egui::CornerRadius { nw: r, ne: r, sw: r, se: r }
     }
+
+    /// Read-only data-visualisation preset.
+    ///
+    /// Disables resize handles and connection-drag so nodes stay visually
+    /// stable and users can't create spurious edges.  Nodes remain clickable,
+    /// hoverable, draggable, and selectable; the viewport still pans and
+    /// zooms.  Box-select still requires Shift-drag (the default), so
+    /// unmodified background drag pans rather than starting a rubber-band
+    /// selection.
+    pub fn viz() -> Self {
+        Self {
+            nodes_resizable: false,
+            nodes_connectable: false,
+            ..Default::default()
+        }
+    }
 }
 
 impl Default for FlowConfig {

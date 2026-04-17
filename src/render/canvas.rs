@@ -320,7 +320,9 @@ where
         let resize_handle_rects: Vec<egui::Rect> = {
             use crate::interaction::resize::HANDLE_SIZE as RH_SIZE;
             if let Some(rid) = should_show_resize_handles(&self.state.node_lookup) {
-                if let Some(rnode) = self.state.node_lookup.get(&rid) {
+                if let Some(rnode) = self.state.node_lookup.get(&rid)
+                    .filter(|n| n.node.resizable.unwrap_or(self.state.config.nodes_resizable))
+                {
                     let origin = self.state.config.node_origin;
                     let raw = flow_to_screen(rnode.internals.position_absolute, &transform);
                     let nw = rnode.width() * transform.scale;
@@ -520,9 +522,11 @@ where
         // loop may have already set `any_node_dragging`.  If we skipped this
         // block the resize handles would never get registered with egui.
         let is_connecting_now = !matches!(self.state.connection_state, ConnectionState::None);
-        if !is_connecting_now && self.state.config.nodes_resizable {
+        if !is_connecting_now {
             if let Some(resize_node_id) = should_show_resize_handles(&self.state.node_lookup) {
-                if let Some(node) = self.state.node_lookup.get(&resize_node_id) {
+                if let Some(node) = self.state.node_lookup.get(&resize_node_id)
+                    .filter(|n| n.node.resizable.unwrap_or(self.state.config.nodes_resizable))
+                {
                     let origin = self.state.config.node_origin;
                     let raw_origin = flow_to_screen(node.internals.position_absolute, &transform);
                     let nw = node.width() * transform.scale;
