@@ -210,6 +210,11 @@ where
 
         let transform = self.state.viewport.to_transform();
 
+        // ── Populate per-node shape from the widget for edge-anchor routing ──
+        for internal in self.state.node_lookup.values_mut() {
+            internal.internals.shape = self.node_widget.shape(&internal.node);
+        }
+
         // ── 1. Background ────────────────────────────────────────────────────
         render_background(
             &painter,

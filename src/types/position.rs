@@ -67,6 +67,37 @@ impl Position {
     }
 }
 
+/// Geometric shape of a node's rendered body, used by edge routing to compute
+/// the correct perimeter-intersection anchor point when no explicit handle is
+/// defined.
+///
+/// Default ([`NodeShape::Rect`]) preserves the historical behaviour of
+/// anchoring edges to points on the node's axis-aligned bounding box.  Return
+/// a different variant from [`NodeWidget::shape`](crate::render::node_renderer::NodeWidget::shape)
+/// when the painted node is not a rectangle (e.g. circle, pill, diamond) so
+/// that edges terminate on the real silhouette.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NodeShape {
+    /// Axis-aligned rectangle matching the node's bounding box. Current default behaviour.
+    Rect,
+    /// Circle centred on the bounding-box centre with the given flow-space radius.
+    Circle {
+        /// Circle radius in flow-space units.
+        radius: f32,
+    },
+    /// Rounded rectangle with the given corner radius in flow-space units.
+    RoundedRect {
+        /// Corner radius in flow-space units.
+        rounding: f32,
+    },
+}
+
+impl Default for NodeShape {
+    fn default() -> Self {
+        NodeShape::Rect
+    }
+}
+
 /// Dimensions of a node or element.
 #[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

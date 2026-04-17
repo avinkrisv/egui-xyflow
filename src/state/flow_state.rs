@@ -208,6 +208,7 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
                     position_absolute: node.position,
                     z: node.z_index.unwrap_or(0),
                     handle_bounds,
+                    shape: crate::types::position::NodeShape::Rect,
                 },
                 node: node.clone(),
             };

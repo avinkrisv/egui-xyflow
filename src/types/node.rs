@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use super::handle::{Handle, NodeHandle};
-use super::position::{CoordinateExtent, Dimensions, NodeOrigin, Position};
+use super::position::{CoordinateExtent, Dimensions, NodeOrigin, NodeShape, Position};
 
 /// Unique identifier for a node in the graph.
 ///
@@ -318,6 +318,10 @@ pub struct NodeInternals {
     pub z: i32,
     /// Resolved handle geometry.
     pub handle_bounds: NodeHandleBounds,
+    /// Resolved geometric shape (from [`crate::render::node_renderer::NodeWidget::shape`]),
+    /// used by edge routing to compute perimeter-intersection anchor points
+    /// when no explicit handle is defined.
+    pub shape: NodeShape,
 }
 
 /// A node paired with its computed internal state.
