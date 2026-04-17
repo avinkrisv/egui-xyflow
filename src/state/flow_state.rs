@@ -52,6 +52,21 @@ pub struct FlowState<ND = (), ED = ()> {
     pub has_animated_edges: bool,
     /// Cached z-sorted node IDs. Invalidated on structural changes.
     sorted_ids_cache: Option<Vec<NodeId>>,
+    /// Pending target for smoothed scroll/pinch zoom. `None` when no smoothing
+    /// animation is in progress (or when `config.zoom_smoothing == 0.0`).
+    /// Mutated by the pan/zoom interaction handler and the per-frame lerp in
+    /// [`crate::render::canvas::FlowCanvas`].
+    pub(crate) zoom_target: Option<ZoomTarget>,
+}
+
+/// Pending scroll/pinch zoom target used by the smoothed-zoom path.
+///
+/// The pointer is stored in screen-space so each lerp step can re-anchor the
+/// viewport — keeping the point under the cursor fixed while zoom converges.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct ZoomTarget {
+    pub(crate) pointer: egui::Pos2,
+    pub(crate) zoom: f32,
 }
 
 impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
@@ -68,6 +83,7 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
             viewport_animation: None,
             has_animated_edges: false,
             sorted_ids_cache: None,
+            zoom_target: None,
         }
     }
 

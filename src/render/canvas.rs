@@ -23,7 +23,9 @@ use crate::interaction::connection_drag::get_closest_handle;
 use crate::interaction::drag::{
     handle_multi_node_drag, handle_multi_node_drag_end, handle_node_drag,
 };
-use crate::interaction::pan_zoom::{calc_auto_pan, clamp_translate, handle_pan_zoom, zoom_toward};
+use crate::interaction::pan_zoom::{
+    calc_auto_pan, clamp_translate, handle_pan_zoom, tick_zoom_smoothing, zoom_toward,
+};
 use crate::interaction::resize::{render_and_handle_resize, should_show_resize_handles};
 use crate::interaction::selection::get_nodes_inside;
 use crate::render::background::render_background;
@@ -790,10 +792,12 @@ where
                 &self.state.config,
                 canvas_rect,
                 selection_active,
+                self.state.zoom_target,
             );
             if pz.changed {
                 events.set_viewport_changed();
             }
+            self.state.zoom_target = pz.zoom_target;
             // Double-click zoom: start an animated zoom instead of instant
             if let Some((screen_pos, factor)) = pz.animate_zoom {
                 let mut target = self.state.viewport;
@@ -806,6 +810,27 @@ where
                 );
                 self.state.animate_viewport(target, time);
                 events.set_viewport_changed();
+            }
+
+            // ── Smoothed-zoom lerp tick ──────────────────────────────────────
+            if let Some(target) = self.state.zoom_target {
+                let smoothing = self.state.config.zoom_smoothing.clamp(0.0, 0.999);
+                if smoothing > 0.0 {
+                    self.state.zoom_target = tick_zoom_smoothing(
+                        &mut self.state.viewport,
+                        target,
+                        smoothing,
+                        &self.state.config,
+                        canvas_rect,
+                    );
+                    events.set_viewport_changed();
+                    if self.state.zoom_target.is_some() {
+                        ui.ctx().request_repaint();
+                    }
+                } else {
+                    // Smoothing was disabled mid-animation — discard pending target.
+                    self.state.zoom_target = None;
+                }
             }
         }
 

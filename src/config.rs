@@ -206,6 +206,15 @@ pub struct FlowConfig {
     /// Cost is O(edges) per frame with a polyline sample per edge; disable
     /// on very large graphs if you don't need hover cues. Default: `true`.
     pub track_edge_hover: bool,
+    /// Smoothing factor applied to scroll / pinch zoom. `0.0` (default) keeps
+    /// the legacy instant-zoom behaviour — each event is applied to the
+    /// viewport on the same frame. Values in `(0.0, 1.0)` interpolate the
+    /// viewport zoom toward an internal target zoom over several frames, so
+    /// high-DPI trackpads and notched wheels feel smoother. `0.85` behaves
+    /// like Figma / xyflow.js; values approaching `1.0` become very slow.
+    /// The zoom-at-pointer anchor is preserved across every interpolation
+    /// step. Values outside `[0.0, 1.0)` are clamped.
+    pub zoom_smoothing: f32,
 }
 
 impl FlowConfig {
@@ -302,6 +311,7 @@ impl Default for FlowConfig {
             edge_label_padding: 3.0,
             cull_offscreen_edges: true,
             track_edge_hover: true,
+            zoom_smoothing: 0.0,
         }
     }
 }

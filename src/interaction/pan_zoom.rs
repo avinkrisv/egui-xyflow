@@ -1,4 +1,5 @@
 use crate::config::FlowConfig;
+use crate::state::flow_state::ZoomTarget;
 use crate::types::position::CoordinateExtent;
 use crate::types::viewport::Viewport;
 
@@ -9,6 +10,10 @@ pub(crate) struct PanZoomResult {
     /// If set, the canvas should start an animated zoom toward this screen
     /// position with this factor (used for double-click).
     pub(crate) animate_zoom: Option<(egui::Pos2, f32)>,
+    /// Updated pending smoothed-zoom target (or `None` to clear it). Only
+    /// populated when `config.zoom_smoothing > 0.0` and a scroll / pinch
+    /// event was observed this frame.
+    pub(crate) zoom_target: Option<ZoomTarget>,
 }
 
 /// Handle pan/zoom input from egui.
@@ -28,11 +33,15 @@ pub(crate) fn handle_pan_zoom(
     config: &FlowConfig,
     canvas_rect: egui::Rect,
     suppress_primary_pan: bool,
+    existing_zoom_target: Option<ZoomTarget>,
 ) -> PanZoomResult {
     let mut changed = false;
     let mut animate_zoom: Option<(egui::Pos2, f32)> = None;
+    let smoothing = config.zoom_smoothing.clamp(0.0, 0.999);
+    let smooth = smoothing > 0.0;
+    let mut zoom_target = existing_zoom_target;
 
-    // ── Scroll wheel → instant zoom ──────────────────────────────────────────
+    // ── Scroll wheel → zoom ──────────────────────────────────────────────────
     if config.zoom_on_scroll && response.hovered() {
         let scroll = ui.input(|i| i.raw_scroll_delta.y);
         if scroll != 0.0 {
@@ -42,28 +51,40 @@ pub(crate) fn handle_pan_zoom(
             let pointer = ui
                 .input(|i| i.pointer.hover_pos())
                 .unwrap_or(canvas_rect.center());
-            zoom_toward(viewport, pointer, factor, config.min_zoom, config.max_zoom);
-            clamp_translate(viewport, &config.translate_extent, canvas_rect);
-            changed = true;
+            if smooth {
+                let base = zoom_target.map(|t| t.zoom).unwrap_or(viewport.zoom);
+                let new_target = (base * factor).clamp(config.min_zoom, config.max_zoom);
+                zoom_target = Some(ZoomTarget { pointer, zoom: new_target });
+            } else {
+                zoom_toward(viewport, pointer, factor, config.min_zoom, config.max_zoom);
+                clamp_translate(viewport, &config.translate_extent, canvas_rect);
+                changed = true;
+            }
         }
     }
 
-    // ── Pinch → instant zoom ─────────────────────────────────────────────────
+    // ── Pinch → zoom ─────────────────────────────────────────────────────────
     if config.zoom_on_pinch && response.hovered() {
         let zoom_delta = ui.input(|i| i.zoom_delta());
         if (zoom_delta - 1.0).abs() > f32::EPSILON {
             let pointer = ui
                 .input(|i| i.pointer.hover_pos())
                 .unwrap_or(canvas_rect.center());
-            zoom_toward(
-                viewport,
-                pointer,
-                zoom_delta,
-                config.min_zoom,
-                config.max_zoom,
-            );
-            clamp_translate(viewport, &config.translate_extent, canvas_rect);
-            changed = true;
+            if smooth {
+                let base = zoom_target.map(|t| t.zoom).unwrap_or(viewport.zoom);
+                let new_target = (base * zoom_delta).clamp(config.min_zoom, config.max_zoom);
+                zoom_target = Some(ZoomTarget { pointer, zoom: new_target });
+            } else {
+                zoom_toward(
+                    viewport,
+                    pointer,
+                    zoom_delta,
+                    config.min_zoom,
+                    config.max_zoom,
+                );
+                clamp_translate(viewport, &config.translate_extent, canvas_rect);
+                changed = true;
+            }
         }
     }
 
@@ -124,6 +145,50 @@ pub(crate) fn handle_pan_zoom(
     PanZoomResult {
         changed,
         animate_zoom,
+        zoom_target,
+    }
+}
+
+/// Advance a smoothed zoom toward its stored target by one frame.
+///
+/// `smoothing` is the raw `FlowConfig::zoom_smoothing` value (already clamped
+/// by the caller to `[0.0, 1.0)`). Returns the updated zoom target — `None`
+/// once the viewport has snapped onto the target and the animation is done.
+///
+/// Each step re-anchors the viewport translation to keep the point under the
+/// stored pointer fixed in screen space, mirroring the instant-zoom path.
+pub(crate) fn tick_zoom_smoothing(
+    viewport: &mut Viewport,
+    target: ZoomTarget,
+    smoothing: f32,
+    config: &FlowConfig,
+    canvas_rect: egui::Rect,
+) -> Option<ZoomTarget> {
+    let lerp_factor = (1.0 - smoothing).clamp(0.0, 1.0);
+    let current = viewport.zoom;
+    let desired = target.zoom.clamp(config.min_zoom, config.max_zoom);
+    let next_zoom = current + (desired - current) * lerp_factor;
+    let snap = (next_zoom - desired).abs() < 1e-4 || lerp_factor >= 1.0;
+    let applied_zoom = if snap { desired } else { next_zoom };
+
+    if current > 0.0 {
+        let factor = applied_zoom / current;
+        zoom_toward(
+            viewport,
+            target.pointer,
+            factor,
+            config.min_zoom,
+            config.max_zoom,
+        );
+    } else {
+        viewport.zoom = applied_zoom;
+    }
+    clamp_translate(viewport, &config.translate_extent, canvas_rect);
+
+    if snap {
+        None
+    } else {
+        Some(target)
     }
 }
 
