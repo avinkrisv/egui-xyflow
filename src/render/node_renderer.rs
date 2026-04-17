@@ -6,7 +6,7 @@
 
 use crate::config::FlowConfig;
 use crate::types::node::Node;
-use crate::types::position::Transform;
+use crate::types::position::{NodeShape, Transform};
 
 /// Trait for custom node rendering.
 pub trait NodeWidget<D> {
@@ -27,6 +27,14 @@ pub trait NodeWidget<D> {
         hovered: bool,
         transform: &Transform,
     );
+
+    /// Return the node's real painted silhouette. Used by edge routing to
+    /// compute the correct perimeter-intersection anchor when no explicit
+    /// handle is defined. Default returns [`NodeShape::Rect`] (the historical
+    /// behaviour of anchoring edges to points on the axis-aligned bounding box).
+    fn shape(&self, _node: &Node<D>) -> NodeShape {
+        NodeShape::Rect
+    }
 }
 
 /// Apply `config.node_bg_opacity` to a colour's alpha channel.

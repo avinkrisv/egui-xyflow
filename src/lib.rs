@@ -193,7 +193,9 @@ pub use types::handle::{Handle, HandleType, NodeHandle};
 pub use types::node::{
     InternalNode, Node, NodeBuilder, NodeExtent, NodeHandleBounds, NodeId, NodeInternals,
 };
-pub use types::position::{CoordinateExtent, Dimensions, NodeOrigin, Position, SnapGrid, Transform};
+pub use types::position::{
+    CoordinateExtent, Dimensions, NodeOrigin, NodeShape, Position, SnapGrid, Transform,
+};
 pub use types::viewport::{PanOnScrollMode, SelectionMode, Viewport};
 
 // State
@@ -249,7 +251,7 @@ pub mod prelude {
     };
     pub use crate::types::handle::{HandleType, NodeHandle};
     pub use crate::types::node::{Node, NodeExtent, NodeId};
-    pub use crate::types::position::{CoordinateExtent, Dimensions, Position, Transform};
+    pub use crate::types::position::{CoordinateExtent, Dimensions, NodeShape, Position, Transform};
     pub use crate::types::viewport::{SelectionMode, Viewport};
 
     pub use crate::state::flow_state::FlowState;

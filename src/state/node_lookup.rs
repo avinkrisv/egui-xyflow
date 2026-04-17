@@ -209,6 +209,7 @@ mod tests {
                         position_absolute: egui::pos2(x, y),
                         z,
                         handle_bounds: NodeHandleBounds::default(),
+                        shape: crate::types::position::NodeShape::Rect,
                     },
                 },
             );
