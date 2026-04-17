@@ -90,8 +90,10 @@ pub struct Node<D = ()> {
     pub draggable: Option<bool>,
     /// Per-node selection override; `None` inherits the global config.
     pub selectable: Option<bool>,
-    /// Per-node connection override; `None` inherits the global config.
+    /// Per-node connection override; `None` inherits [`FlowConfig::nodes_connectable`](crate::config::FlowConfig::nodes_connectable).
     pub connectable: Option<bool>,
+    /// Per-node resize override; `None` inherits [`FlowConfig::nodes_resizable`](crate::config::FlowConfig::nodes_resizable).
+    pub resizable: Option<bool>,
     /// Per-node deletion override; `None` inherits the global config.
     pub deletable: Option<bool>,
     /// Explicit width in flow-space pixels. When `None`, [`measured`](Self::measured) is used.
@@ -155,6 +157,7 @@ pub struct NodeBuilder<D = ()> {
     draggable: Option<bool>,
     selectable: Option<bool>,
     connectable: Option<bool>,
+    resizable: Option<bool>,
     deletable: Option<bool>,
     width: Option<f32>,
     height: Option<f32>,
@@ -188,6 +191,7 @@ impl<D> NodeBuilder<D> {
             draggable: None,
             selectable: None,
             connectable: None,
+            resizable: None,
             deletable: None,
             width: None,
             height: None,
@@ -244,6 +248,22 @@ impl<D> NodeBuilder<D> {
         self
     }
 
+    /// Override whether this node shows resize handles when selected.
+    ///
+    /// Takes precedence over [`FlowConfig::nodes_resizable`](crate::config::FlowConfig::nodes_resizable).
+    pub fn resizable(mut self, v: bool) -> Self {
+        self.resizable = Some(v);
+        self
+    }
+
+    /// Override whether this node can start or accept connection drags.
+    ///
+    /// Takes precedence over [`FlowConfig::nodes_connectable`](crate::config::FlowConfig::nodes_connectable).
+    pub fn connectable(mut self, v: bool) -> Self {
+        self.connectable = Some(v);
+        self
+    }
+
     /// Consume the builder and return the constructed [`Node`].
     ///
     /// # Panics
@@ -265,6 +285,7 @@ impl<D> NodeBuilder<D> {
             draggable: self.draggable,
             selectable: self.selectable,
             connectable: self.connectable,
+            resizable: self.resizable,
             deletable: self.deletable,
             width: self.width,
             height: self.height,
