@@ -239,12 +239,16 @@ where
             );
             edge_endpoints = Vec::new(); // custom renderer handles its own indicators
         } else {
+            // Split-borrow `self.state` so render_edges can mutate the path
+            // cache while reading edges, node_lookup, and config.
+            let state = &mut *self.state;
             edge_endpoints = render_edges(
                 &painter,
-                &self.state.edges,
-                &self.state.node_lookup,
+                &state.edges,
+                &state.node_lookup,
+                &mut state.edge_path_cache,
                 &transform,
-                &self.state.config,
+                &state.config,
                 time,
                 canvas_rect,
             );

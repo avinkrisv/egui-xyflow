@@ -70,6 +70,7 @@ A node graph editor for [egui](https://github.com/emilk/egui). Build interactive
 - **Background patterns** — dots, lines, or cross
 - **Animated viewport transitions** with easing functions
 - **Viewport edge culling** — off-screen edges skip path compute (toggle via `FlowConfig::cull_offscreen_edges`)
+- **Cached edge geometry** — flow-space polylines are cached per edge and only rebuilt when an endpoint node moves/resizes or the edge itself is mutated, so pan and zoom on a static graph skip path sampling entirely
 - **Force-directed layout** — built-in `egui_xyflow::physics` module with Barnes–Hut charge, link, position, collision, and center forces (D3-compatible defaults)
 - **Serde support** — save and load graph state (enabled by default)
 - **Fully customizable** — 60+ options in `FlowConfig`, plus traits for custom node/edge rendering

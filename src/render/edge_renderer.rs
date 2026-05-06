@@ -6,10 +6,15 @@ use crate::edges::positions::get_edge_position;
 use crate::edges::smooth_step::{get_smooth_step_path, get_step_path};
 use crate::edges::straight::get_straight_path;
 use crate::graph::node_position::flow_to_screen;
-use crate::types::edge::{Edge, EdgeMarker, EdgeType};
+use crate::state::flow_state::EdgePathCache;
+use crate::types::edge::{Edge, EdgeId, EdgeMarker, EdgeType};
 use crate::types::node::{InternalNode, NodeId};
 use crate::types::position::{Position, Transform};
+use smallvec::SmallVec;
 use std::collections::HashMap;
+
+/// Number of samples used when caching a bezier curve as a flow-space polyline.
+const BEZIER_CACHE_SAMPLES: usize = 64;
 
 /// Screen-space endpoint info collected during edge rendering so that contact
 /// indicators and arrow markers can be drawn in a later pass (on top of nodes).
@@ -26,10 +31,12 @@ pub(crate) struct EdgeEndpoints {
     pub(crate) edge_stroke_width: f32,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn render_edges<ND, ED>(
     painter: &egui::Painter,
     edges: &[Edge<ED>],
     node_lookup: &HashMap<NodeId, InternalNode<ND>>,
+    edge_path_cache: &mut HashMap<EdgeId, EdgePathCache>,
     transform: &Transform,
     config: &FlowConfig,
     time: f64,
@@ -44,6 +51,7 @@ pub(crate) fn render_edges<ND, ED>(
             painter,
             edge,
             node_lookup,
+            edge_path_cache,
             transform,
             config,
             time,
@@ -55,42 +63,107 @@ pub(crate) fn render_edges<ND, ED>(
     endpoints
 }
 
-fn render_single_edge<ND, ED>(
-    painter: &egui::Painter,
+/// Build (or refresh) a flow-space cache entry for `edge`. Returns `None`
+/// when either endpoint node is missing from `node_lookup` — the caller
+/// should skip rendering in that case.
+fn build_path_cache_entry<ND, ED>(
     edge: &Edge<ED>,
     node_lookup: &HashMap<NodeId, InternalNode<ND>>,
-    transform: &Transform,
     config: &FlowConfig,
-    time: f64,
-    canvas_rect: egui::Rect,
-) -> Option<EdgeEndpoints> {
-    let default_source_pos = config.default_source_position;
-    let default_target_pos = config.default_target_position;
-
+) -> Option<EdgePathCache> {
     let edge_pos = get_edge_position(
         &edge.source,
         &edge.target,
         edge.source_handle.as_deref(),
         edge.target_handle.as_deref(),
         node_lookup,
-        default_source_pos,
-        default_target_pos,
+        config.default_source_position,
+        config.default_target_position,
         edge.source_anchor.as_ref(),
         edge.target_anchor.as_ref(),
     )?;
 
-    // Viewport culling: skip edges whose endpoint-AABB is clearly off-screen.
-    // We inflate the rect by a generous margin to account for bezier/step
-    // control points that overshoot the straight-line AABB.
+    let edge_type = edge.edge_type.unwrap_or(config.default_edge_type);
+
+    let (points, label_pos): (SmallVec<[egui::Pos2; 16]>, egui::Pos2) = match edge_type {
+        EdgeType::Bezier | EdgeType::SimpleBezier => {
+            let result = get_bezier_path(&edge_pos, None);
+            if result.points.len() != 4 {
+                // Degenerate bezier — fall back to straight line.
+                let mut pts: SmallVec<[egui::Pos2; 16]> = SmallVec::new();
+                pts.push(egui::pos2(edge_pos.source_x, edge_pos.source_y));
+                pts.push(egui::pos2(edge_pos.target_x, edge_pos.target_y));
+                (pts, result.label_pos)
+            } else {
+                let sampled = sample_bezier(
+                    result.points[0],
+                    result.points[1],
+                    result.points[2],
+                    result.points[3],
+                    BEZIER_CACHE_SAMPLES,
+                );
+                let mut pts: SmallVec<[egui::Pos2; 16]> = SmallVec::with_capacity(sampled.len());
+                pts.extend(sampled);
+                (pts, result.label_pos)
+            }
+        }
+        EdgeType::Straight => {
+            let result = get_straight_path(&edge_pos);
+            let mut pts: SmallVec<[egui::Pos2; 16]> = SmallVec::with_capacity(result.points.len());
+            pts.extend(result.points.iter().copied());
+            (pts, result.label_pos)
+        }
+        EdgeType::SmoothStep => {
+            let result = get_smooth_step_path(&edge_pos, None, None);
+            let mut pts: SmallVec<[egui::Pos2; 16]> = SmallVec::with_capacity(result.points.len());
+            pts.extend(result.points.iter().copied());
+            (pts, result.label_pos)
+        }
+        EdgeType::Step => {
+            let result = get_step_path(&edge_pos, None);
+            let mut pts: SmallVec<[egui::Pos2; 16]> = SmallVec::with_capacity(result.points.len());
+            pts.extend(result.points.iter().copied());
+            (pts, result.label_pos)
+        }
+    };
+
+    Some(EdgePathCache {
+        points,
+        label_pos,
+        source_pos: edge_pos.source_pos,
+        target_pos: edge_pos.target_pos,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn render_single_edge<ND, ED>(
+    painter: &egui::Painter,
+    edge: &Edge<ED>,
+    node_lookup: &HashMap<NodeId, InternalNode<ND>>,
+    edge_path_cache: &mut HashMap<EdgeId, EdgePathCache>,
+    transform: &Transform,
+    config: &FlowConfig,
+    time: f64,
+    canvas_rect: egui::Rect,
+) -> Option<EdgeEndpoints> {
+    // Lazy fill: build flow-space polyline on miss.
+    if !edge_path_cache.contains_key(&edge.id) {
+        let entry = build_path_cache_entry(edge, node_lookup, config)?;
+        edge_path_cache.insert(edge.id.clone(), entry);
+    }
+    let cache = edge_path_cache.get(&edge.id)?;
+    if cache.points.len() < 2 {
+        return None;
+    }
+
+    let src_flow = *cache.points.first()?;
+    let tgt_flow = *cache.points.last()?;
+
+    // Viewport culling using the flow-space endpoints — same heuristic as
+    // before, just sourced from the cache so we don't recompute geometry.
     if config.cull_offscreen_edges {
-        let src_screen = flow_to_screen(
-            egui::pos2(edge_pos.source_x, edge_pos.source_y),
-            transform,
-        );
-        let tgt_screen = flow_to_screen(
-            egui::pos2(edge_pos.target_x, edge_pos.target_y),
-            transform,
-        );
+        let src_screen = flow_to_screen(src_flow, transform);
+        let tgt_screen = flow_to_screen(tgt_flow, transform);
         let mut aabb = egui::Rect::from_two_pos(src_screen, tgt_screen);
         let margin = 64.0_f32.max(aabb.width().abs().max(aabb.height().abs()) * 0.5);
         aabb = aabb.expand(margin);
@@ -99,7 +172,6 @@ fn render_single_edge<ND, ED>(
         }
     }
 
-    let edge_type = edge.edge_type.unwrap_or(config.default_edge_type);
     let style = edge.style.as_ref();
     let color = if edge.selected {
         style.and_then(|s| s.selected_color).unwrap_or(config.edge_selected_color)
@@ -111,118 +183,36 @@ fn render_single_edge<ND, ED>(
     let stroke = egui::Stroke::new(width, color);
     let glow = style.and_then(|s| s.glow);
 
-    let label_pos_flow: Option<egui::Pos2>;
-    match edge_type {
-        EdgeType::Bezier | EdgeType::SimpleBezier => {
-            let result = get_bezier_path(&edge_pos, None);
-            label_pos_flow = Some(result.label_pos);
-            if result.points.len() == 4 {
-                let p0 = flow_to_screen(result.points[0], transform);
-                let p1 = flow_to_screen(result.points[1], transform);
-                let p2 = flow_to_screen(result.points[2], transform);
-                let p3 = flow_to_screen(result.points[3], transform);
+    // Transform the cached flow-space polyline into screen space. This is the
+    // dominant per-frame cost on static graphs — a vec2*scalar+vec2 per vertex.
+    let screen_points: Vec<egui::Pos2> = cache
+        .points
+        .iter()
+        .map(|p| flow_to_screen(*p, transform))
+        .collect();
 
-                // Glow pass (wider, semi-transparent, behind the main stroke)
-                if let Some(g) = glow {
-                    let glow_stroke = egui::Stroke::new(g.width, g.color);
-                    if edge.animated {
-                        draw_animated_bezier(painter, p0, p1, p2, p3, glow_stroke, config, time);
-                    } else {
-                        let bezier = epaint::CubicBezierShape::from_points_stroke(
-                            [p0, p1, p2, p3],
-                            false,
-                            egui::Color32::TRANSPARENT,
-                            glow_stroke,
-                        );
-                        painter.add(bezier);
-                    }
-                }
-
-                if edge.animated {
-                    draw_animated_bezier(painter, p0, p1, p2, p3, stroke, config, time);
-                } else {
-                    let bezier = epaint::CubicBezierShape::from_points_stroke(
-                        [p0, p1, p2, p3],
-                        false,
-                        egui::Color32::TRANSPARENT,
-                        stroke,
-                    );
-                    painter.add(bezier);
-                }
-            }
+    if let Some(g) = glow {
+        let glow_stroke = egui::Stroke::new(g.width, g.color);
+        if edge.animated {
+            draw_animated_line(painter, &screen_points, glow_stroke, config, time);
+        } else {
+            draw_polyline(painter, &screen_points, glow_stroke);
         }
-        EdgeType::Straight => {
-            let result = get_straight_path(&edge_pos);
-            label_pos_flow = Some(result.label_pos);
-            let from = flow_to_screen(result.points[0], transform);
-            let to = flow_to_screen(result.points[1], transform);
+    }
 
-            if let Some(g) = glow {
-                let glow_stroke = egui::Stroke::new(g.width, g.color);
-                if edge.animated {
-                    draw_animated_line(painter, &[from, to], glow_stroke, config, time);
-                } else {
-                    painter.line_segment([from, to], glow_stroke);
-                }
-            }
-
-            if edge.animated {
-                draw_animated_line(painter, &[from, to], stroke, config, time);
-            } else {
-                painter.line_segment([from, to], stroke);
-            }
-        }
-        EdgeType::SmoothStep => {
-            let result = get_smooth_step_path(&edge_pos, None, None);
-            label_pos_flow = Some(result.label_pos);
-            let screen_points: Vec<egui::Pos2> =
-                result.points.iter().map(|p| flow_to_screen(*p, transform)).collect();
-
-            if let Some(g) = glow {
-                let glow_stroke = egui::Stroke::new(g.width, g.color);
-                if edge.animated {
-                    draw_animated_line(painter, &screen_points, glow_stroke, config, time);
-                } else {
-                    draw_polyline(painter, &screen_points, glow_stroke);
-                }
-            }
-
-            if edge.animated {
-                draw_animated_line(painter, &screen_points, stroke, config, time);
-            } else {
-                draw_polyline(painter, &screen_points, stroke);
-            }
-        }
-        EdgeType::Step => {
-            let result = get_step_path(&edge_pos, None);
-            label_pos_flow = Some(result.label_pos);
-            let screen_points: Vec<egui::Pos2> =
-                result.points.iter().map(|p| flow_to_screen(*p, transform)).collect();
-
-            if let Some(g) = glow {
-                let glow_stroke = egui::Stroke::new(g.width, g.color);
-                if edge.animated {
-                    draw_animated_line(painter, &screen_points, glow_stroke, config, time);
-                } else {
-                    draw_polyline(painter, &screen_points, glow_stroke);
-                }
-            }
-
-            if edge.animated {
-                draw_animated_line(painter, &screen_points, stroke, config, time);
-            } else {
-                draw_polyline(painter, &screen_points, stroke);
-            }
-        }
+    if edge.animated {
+        draw_animated_line(painter, &screen_points, stroke, config, time);
+    } else {
+        draw_polyline(painter, &screen_points, stroke);
     }
 
     // Markers (start + end) are deferred to a post-node pass — see
     // `render_edge_markers` — so they are not overpainted by node bodies.
 
-    // Render text label at the computed label_pos.
-    if let (Some(label), Some(lp_flow)) = (edge.label.as_deref(), label_pos_flow) {
+    // Render text label at the cached `label_pos`.
+    if let Some(label) = edge.label.as_deref() {
         if !label.is_empty() {
-            let center = flow_to_screen(lp_flow, transform);
+            let center = flow_to_screen(cache.label_pos, transform);
             let font = egui::FontId::proportional(config.edge_label_font_size * transform.scale);
             let galley = painter.layout_no_wrap(
                 label.to_owned(),
@@ -246,22 +236,15 @@ fn render_single_edge<ND, ED>(
         }
     }
 
-    // Return endpoint screen positions for contact indicator rendering
-    // (drawn later, on top of nodes).
-    let src_screen = flow_to_screen(
-        egui::pos2(edge_pos.source_x, edge_pos.source_y),
-        transform,
-    );
-    let tgt_screen = flow_to_screen(
-        egui::pos2(edge_pos.target_x, edge_pos.target_y),
-        transform,
-    );
+    let src_screen = *screen_points.first()?;
+    let tgt_screen = *screen_points.last()?;
+
     Some(EdgeEndpoints {
         edge_id: edge.id.clone(),
         source_screen: src_screen,
         target_screen: tgt_screen,
-        source_pos: edge_pos.source_pos,
-        target_pos: edge_pos.target_pos,
+        source_pos: cache.source_pos,
+        target_pos: cache.target_pos,
         marker_start: edge.marker_start.clone(),
         marker_end: edge.marker_end.clone(),
         edge_color: color,
@@ -377,18 +360,3 @@ fn draw_animated_line(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn draw_animated_bezier(
-    painter: &egui::Painter,
-    p0: egui::Pos2,
-    p1: egui::Pos2,
-    p2: egui::Pos2,
-    p3: egui::Pos2,
-    stroke: egui::Stroke,
-    config: &FlowConfig,
-    time: f64,
-) {
-    // Sample bezier into line segments for dashed rendering
-    let sampled = sample_bezier(p0, p1, p2, p3, 64);
-    draw_animated_line(painter, &sampled, stroke, config, time);
-}

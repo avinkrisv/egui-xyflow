@@ -5,6 +5,7 @@
 //! to [`crate::render::canvas::FlowCanvas`] each frame.
 
 use crate::types::position::CoordinateExtent;
+use smallvec::SmallVec;
 use std::collections::HashMap;
 
 use crate::animation::viewport_animation::ViewportAnimation;
@@ -12,11 +13,32 @@ use crate::config::FlowConfig;
 use crate::graph::utils::get_nodes_bounds;
 use crate::types::changes::{EdgeChange, NodeChange};
 use crate::types::connection::ConnectionState;
-use crate::types::edge::Edge;
+use crate::types::edge::{Edge, EdgeId};
 use crate::types::handle::{Handle, HandleType};
 use crate::types::node::{InternalNode, Node, NodeHandleBounds, NodeId, NodeInternals};
 use crate::types::position::Position;
 use crate::types::viewport::Viewport;
+
+/// Cached flow-space edge geometry.
+///
+/// Built lazily on first render and reused on every subsequent frame until
+/// invalidated by a change to either endpoint node (move/resize) or to the
+/// edge itself (replace, anchor change, structural). Pan/zoom never
+/// invalidate the cache — the cached polyline is in flow space, so per-frame
+/// work is reduced to one transform per vertex plus stroking.
+#[derive(Debug, Clone)]
+pub(crate) struct EdgePathCache {
+    /// Polyline samples in flow space. For straight edges this is two points;
+    /// for smoothstep / step, the full orthogonal path; for bezier, a 64-point
+    /// sampling of the curve.
+    pub points: SmallVec<[egui::Pos2; 16]>,
+    /// Suggested label anchor in flow space.
+    pub label_pos: egui::Pos2,
+    /// Resolved source-side `Position` (for arrow marker orientation).
+    pub source_pos: Position,
+    /// Resolved target-side `Position` (for arrow marker orientation).
+    pub target_pos: Position,
+}
 
 use super::changes::{apply_edge_changes, apply_node_changes};
 
@@ -57,6 +79,10 @@ pub struct FlowState<ND = (), ED = ()> {
     /// Mutated by the pan/zoom interaction handler and the per-frame lerp in
     /// [`crate::render::canvas::FlowCanvas`].
     pub(crate) zoom_target: Option<ZoomTarget>,
+    /// Per-edge cached flow-space polyline. Built lazily during render and
+    /// invalidated by node move/resize and edge mutations. Pan / zoom do not
+    /// invalidate it.
+    pub(crate) edge_path_cache: HashMap<EdgeId, EdgePathCache>,
 }
 
 /// Pending scroll/pinch zoom target used by the smoothed-zoom path.
@@ -84,6 +110,21 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
             has_animated_edges: false,
             sorted_ids_cache: None,
             zoom_target: None,
+            edge_path_cache: HashMap::new(),
+        }
+    }
+
+    /// Drop cached path entries for every edge connected to `node_id`.
+    /// Called when a node moves, resizes, or is replaced — its perimeter
+    /// position changes the resolved endpoints of every connected edge.
+    fn invalidate_edges_for_node(&mut self, node_id: &NodeId) {
+        if self.edge_path_cache.is_empty() {
+            return;
+        }
+        for edge in &self.edges {
+            if &edge.source == node_id || &edge.target == node_id {
+                self.edge_path_cache.remove(&edge.id);
+            }
         }
     }
 
@@ -164,6 +205,9 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
                             internal.node.dragging = *d;
                         }
                     }
+                    if position.is_some() {
+                        self.invalidate_edges_for_node(id);
+                    }
                 }
                 NodeChange::Dimensions { id, dimensions } => {
                     if let Some(internal) = self.node_lookup.get_mut(id) {
@@ -176,6 +220,7 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
                         internal.internals.handle_bounds =
                             build_handle_bounds(&internal.node, &self.config);
                     }
+                    self.invalidate_edges_for_node(id);
                 }
                 NodeChange::Select { id, selected } => {
                     if let Some(internal) = self.node_lookup.get_mut(id) {
@@ -193,6 +238,20 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
 
     /// Apply a batch of edge mutations.
     pub fn apply_edge_changes(&mut self, changes: &[EdgeChange<ED>]) {
+        // Invalidate cached paths for any edge whose geometry-affecting fields
+        // are about to change. Style-only changes (`EdgeChange::Style`) and
+        // selection-only changes leave the path intact.
+        for change in changes {
+            match change {
+                EdgeChange::Remove { id }
+                | EdgeChange::Replace { id, .. }
+                | EdgeChange::Anchor { id, .. } => {
+                    self.edge_path_cache.remove(id);
+                }
+                EdgeChange::Add { .. } | EdgeChange::Style { .. } | EdgeChange::Select { .. } => {}
+            }
+        }
+
         apply_edge_changes(changes, &mut self.edges);
         self.has_animated_edges = self.edges.iter().any(|e| e.animated);
     }
@@ -200,6 +259,8 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
     /// Rebuild internal node lookup from user nodes.
     pub fn rebuild_lookup(&mut self) {
         self.sorted_ids_cache = None; // invalidate cache
+        // Structural changes can shift any node — drop all cached edge paths.
+        self.edge_path_cache.clear();
         self.node_lookup.clear();
         for node in &self.nodes {
             let handle_bounds = build_handle_bounds(node, &self.config);
