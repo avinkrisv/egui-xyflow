@@ -35,6 +35,35 @@ pub trait NodeWidget<D> {
     fn shape(&self, _node: &Node<D>) -> NodeShape {
         NodeShape::Rect
     }
+
+    /// Whether this widget wants [`Self::show_ui`] to be called once per node.
+    /// Defaults to `false` so canvases that only use [`Self::show`] don't pay
+    /// for an extra `Ui` allocation per node. Override and return `true` if
+    /// the widget implements `show_ui`.
+    fn wants_ui(&self) -> bool {
+        false
+    }
+
+    /// Optional `Ui`-based render hook. Called for each node *after* `show`,
+    /// inside a child `Ui` whose `max_rect` is the node's `screen_rect`. Use
+    /// this when manual `Painter`-based layout in `show` would be tedious —
+    /// e.g. multi-line text, badges, status indicators, token counts — and
+    /// you want egui's built-in layout (`ui.label`, `ui.horizontal`, etc.).
+    ///
+    /// `show` and `show_ui` may both be implemented: a common pattern is to
+    /// paint background / border / shadow in `show` (where `Painter` is the
+    /// natural fit) and lay out content with `show_ui`.
+    ///
+    /// Only invoked when [`Self::wants_ui`] returns `true`.
+    fn show_ui(
+        &self,
+        _ui: &mut egui::Ui,
+        _node: &Node<D>,
+        _screen_rect: egui::Rect,
+        _config: &FlowConfig,
+        _hovered: bool,
+    ) {
+    }
 }
 
 /// Apply `config.node_bg_opacity` to a colour's alpha channel.

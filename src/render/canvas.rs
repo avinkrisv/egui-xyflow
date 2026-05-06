@@ -480,16 +480,27 @@ where
             }
 
             // ── Render node ──────────────────────────────────────────────────
-            {
-                let node = self.state.node_lookup.get(id).unwrap();
+            if let Some(internal) = self.state.node_lookup.get(id) {
                 self.node_widget.show(
                     &painter,
-                    &node.node,
+                    &internal.node,
                     screen_rect,
                     &self.state.config,
                     is_hovered,
                     &transform,
                 );
+
+                if self.node_widget.wants_ui() {
+                    let node_ref = &internal.node;
+                    let widget = self.node_widget;
+                    let cfg = &self.state.config;
+                    let builder = egui::UiBuilder::new()
+                        .max_rect(screen_rect)
+                        .layout(egui::Layout::top_down(egui::Align::Min));
+                    ui.scope_builder(builder, |child_ui| {
+                        widget.show_ui(child_ui, node_ref, screen_rect, cfg, is_hovered);
+                    });
+                }
             }
 
             // ── Handles ──────────────────────────────────────────────────────

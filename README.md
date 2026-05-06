@@ -378,6 +378,33 @@ impl NodeWidget<MyData> for MyRenderer {
 - `DefaultNodeWidget` — renders `Node<String>` with label text
 - `UnitNodeWidget` — renders `Node<()>` as plain boxes
 
+**Optional `show_ui` hook.** If you'd rather use egui's high-level widgets
+(`ui.label`, `ui.horizontal`, etc.) than lay text out by hand on the
+`Painter`, opt into the `show_ui` hook by returning `true` from
+`wants_ui()`. It's invoked once per node inside a child `Ui` constrained
+to the node's screen rect, after `show`:
+
+```rust,ignore
+impl NodeWidget<MyData> for MyRenderer {
+    fn size(&self, _node: &Node<MyData>, _config: &FlowConfig) -> egui::Vec2 {
+        egui::vec2(220.0, 80.0)
+    }
+
+    // Use the Painter for the background, border, shadow.
+    fn show(&self, painter: &egui::Painter, node: &Node<MyData>, rect: egui::Rect, _: &FlowConfig, _: bool, _: &Transform) {
+        painter.rect_filled(rect, 8.0, egui::Color32::from_rgb(30, 30, 46));
+    }
+
+    fn wants_ui(&self) -> bool { true }
+
+    // Use Ui for layout-heavy content.
+    fn show_ui(&self, ui: &mut egui::Ui, node: &Node<MyData>, _: egui::Rect, _: &FlowConfig, _: bool) {
+        ui.label(egui::RichText::new(&node.data.title).strong());
+        ui.label(egui::RichText::new(&node.data.detail).size(10.0));
+    }
+}
+```
+
 ## Custom Edge Rendering
 
 Implement `EdgeWidget` for custom edge paths:
