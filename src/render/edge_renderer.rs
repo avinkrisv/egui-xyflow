@@ -6,18 +6,24 @@ use crate::edges::positions::get_edge_position;
 use crate::edges::smooth_step::{get_smooth_step_path, get_step_path};
 use crate::edges::straight::get_straight_path;
 use crate::graph::node_position::flow_to_screen;
-use crate::types::edge::{Edge, EdgeType};
+use crate::types::edge::{Edge, EdgeMarker, EdgeType};
 use crate::types::node::{InternalNode, NodeId};
-use crate::types::position::Transform;
+use crate::types::position::{Position, Transform};
 use std::collections::HashMap;
 
 /// Screen-space endpoint info collected during edge rendering so that contact
-/// indicators can be drawn in a later pass (on top of nodes).
+/// indicators and arrow markers can be drawn in a later pass (on top of nodes).
 pub(crate) struct EdgeEndpoints {
     #[allow(dead_code)]
     pub(crate) edge_id: crate::types::edge::EdgeId,
     pub(crate) source_screen: egui::Pos2,
     pub(crate) target_screen: egui::Pos2,
+    pub(crate) source_pos: Position,
+    pub(crate) target_pos: Position,
+    pub(crate) marker_start: Option<EdgeMarker>,
+    pub(crate) marker_end: Option<EdgeMarker>,
+    pub(crate) edge_color: egui::Color32,
+    pub(crate) edge_stroke_width: f32,
 }
 
 pub(crate) fn render_edges<ND, ED>(
@@ -210,14 +216,8 @@ fn render_single_edge<ND, ED>(
         }
     }
 
-    // Render arrow markers
-    if edge.marker_end.is_some() {
-        let target_screen = flow_to_screen(
-            egui::pos2(edge_pos.target_x, edge_pos.target_y),
-            transform,
-        );
-        super::markers::render_arrow(painter, target_screen, edge_pos.target_pos, color, width);
-    }
+    // Markers (start + end) are deferred to a post-node pass — see
+    // `render_edge_markers` — so they are not overpainted by node bodies.
 
     // Render text label at the computed label_pos.
     if let (Some(label), Some(lp_flow)) = (edge.label.as_deref(), label_pos_flow) {
@@ -260,7 +260,43 @@ fn render_single_edge<ND, ED>(
         edge_id: edge.id.clone(),
         source_screen: src_screen,
         target_screen: tgt_screen,
+        source_pos: edge_pos.source_pos,
+        target_pos: edge_pos.target_pos,
+        marker_start: edge.marker_start.clone(),
+        marker_end: edge.marker_end.clone(),
+        edge_color: color,
+        edge_stroke_width: width,
     })
+}
+
+/// Render arrow markers for all edges. Called after the nodes pass so the
+/// arrows are not overpainted by `NodeWidget` implementations that fill their
+/// full screen rect (e.g. circles, filled rectangles).
+pub(crate) fn render_edge_markers(painter: &egui::Painter, endpoints: &[EdgeEndpoints]) {
+    for ep in endpoints {
+        if let Some(marker) = &ep.marker_end {
+            super::markers::render_marker(
+                painter,
+                ep.target_screen,
+                ep.target_pos,
+                ep.edge_color,
+                ep.edge_stroke_width,
+                marker,
+                Some(ep.source_screen),
+            );
+        }
+        if let Some(marker) = &ep.marker_start {
+            super::markers::render_marker(
+                painter,
+                ep.source_screen,
+                ep.source_pos,
+                ep.edge_color,
+                ep.edge_stroke_width,
+                marker,
+                Some(ep.target_screen),
+            );
+        }
+    }
 }
 
 /// Render contact indicator circles at edge endpoints.

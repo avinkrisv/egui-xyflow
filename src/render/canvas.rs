@@ -30,7 +30,9 @@ use crate::interaction::resize::{render_and_handle_resize, should_show_resize_ha
 use crate::interaction::selection::get_nodes_inside;
 use crate::render::background::render_background;
 use crate::render::connection_renderer::render_connection_line;
-use crate::render::edge_renderer::{render_edge_contact_indicators, render_edges, EdgeEndpoints};
+use crate::render::edge_renderer::{
+    render_edge_contact_indicators, render_edge_markers, render_edges, EdgeEndpoints,
+};
 use crate::render::handle_renderer::render_handles;
 use crate::render::minimap::render_minimap;
 use crate::render::node_renderer::NodeWidget;
@@ -682,6 +684,10 @@ where
         if !node_changes.is_empty() {
             self.state.apply_node_changes(&node_changes);
         }
+
+        // ── Edge arrow markers (rendered on top of nodes so node fills don't
+        //    overpaint the arrowhead).
+        render_edge_markers(&painter, &edge_endpoints);
 
         // ── Edge contact indicators (rendered on top of nodes) ───────────────
         render_edge_contact_indicators(
