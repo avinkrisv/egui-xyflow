@@ -76,9 +76,10 @@ impl Position {
 /// a different variant from [`NodeWidget::shape`](crate::render::node_renderer::NodeWidget::shape)
 /// when the painted node is not a rectangle (e.g. circle, pill, diamond) so
 /// that edges terminate on the real silhouette.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum NodeShape {
     /// Axis-aligned rectangle matching the node's bounding box. Current default behaviour.
+    #[default]
     Rect,
     /// Circle centred on the bounding-box centre with the given flow-space radius.
     Circle {
@@ -90,12 +91,6 @@ pub enum NodeShape {
         /// Corner radius in flow-space units.
         rounding: f32,
     },
-}
-
-impl Default for NodeShape {
-    fn default() -> Self {
-        NodeShape::Rect
-    }
 }
 
 /// Dimensions of a node or element.

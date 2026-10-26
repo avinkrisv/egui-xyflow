@@ -121,11 +121,11 @@ impl CyclePreventionValidator {
             if node == source {
                 return true;
             }
-            if visited.insert(node) {
-                if let Some(neighbours) = adj.get(node) {
-                    for &n in neighbours {
-                        stack.push(n);
-                    }
+            if visited.insert(node)
+                && let Some(neighbours) = adj.get(node)
+            {
+                for &n in neighbours {
+                    stack.push(n);
                 }
             }
         }
@@ -515,20 +515,21 @@ impl DepGraphApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for DepGraphApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // -- Top toolbar -----------------------------------------------------
-        egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
+        egui::Panel::top("toolbar").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading("Dependency Graph");
                 ui.separator();
 
                 if ui.button("Fit All").clicked() {
-                    let rect = ctx.screen_rect();
+                    let rect = ctx.viewport_rect();
                     let t = ctx.input(|i| i.time);
                     self.state.fit_view(rect, 40.0, t);
                 }
                 if ui.button("Fit Selected").clicked() {
-                    let rect = ctx.screen_rect();
+                    let rect = ctx.viewport_rect();
                     let t = ctx.input(|i| i.time);
                     self.state.fit_selected_nodes(rect, 40.0, t);
                 }
@@ -558,11 +559,11 @@ impl eframe::App for DepGraphApp {
         });
 
         // -- Side panel: topo order + event log ------------------------------
-        egui::SidePanel::right("info_panel")
+        egui::Panel::right("info_panel")
             .resizable(true)
-            .min_width(230.0)
-            .default_width(280.0)
-            .show(ctx, |ui| {
+            .min_size(230.0)
+            .default_size(280.0)
+            .show(ui, |ui| {
                 // ---- Execution Order section ----
                 ui.heading("Execution Order");
                 ui.separator();
@@ -681,7 +682,7 @@ impl eframe::App for DepGraphApp {
         // -- Main canvas -----------------------------------------------------
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::from_rgb(248, 248, 252)))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 let events = FlowCanvas::new(&mut self.state, &TaskNodeWidget)
                     .connection_validator(&self.validator)
                     .show(ui);

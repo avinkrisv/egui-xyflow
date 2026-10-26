@@ -218,7 +218,7 @@ fn insert_into_internal(cell: &mut Cell, p: Point, x1: f32, y1: f32, x2: f32, y2
         _ => (xm, ym, x2, y2),
     };
     if let Cell::Internal { children } = cell {
-        insert(&mut *children[quad], p, cx1, cy1, cx2, cy2);
+        insert(&mut children[quad], p, cx1, cy1, cx2, cy2);
     }
 }
 
@@ -381,7 +381,7 @@ mod tests {
 
     #[test]
     fn coincident_points_dont_infinite_recurse() {
-        let pts: Vec<(f32, f32, f32)> = (0..16).map(|i| (0.0, 0.0, -1.0 * i as f32)).collect();
+        let pts: Vec<(f32, f32, f32)> = (0..16).map(|i| (0.0, 0.0, -(i as f32))).collect();
         let qt = QuadTree::new(&pts);
         assert_eq!(qt.len(), 16);
         // coincident points → single leaf

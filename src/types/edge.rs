@@ -231,6 +231,7 @@ pub struct Edge<D = ()> {
     pub label: Option<String>,
 }
 
+#[cfg(feature = "serde")]
 fn default_interaction_width() -> f32 {
     20.0
 }

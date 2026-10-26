@@ -295,19 +295,11 @@ pub fn project_to_border(
         .unwrap();
 
     let t = match side {
-        Position::Top | Position::Bottom => {
-            if rect.width() > 0.0 {
-                ((closest.x - rect.min.x) / rect.width()).clamp(0.0, 1.0)
-            } else {
-                0.5
-            }
+        Position::Top | Position::Bottom if rect.width() > 0.0 => {
+            ((closest.x - rect.min.x) / rect.width()).clamp(0.0, 1.0)
         }
-        Position::Left | Position::Right => {
-            if rect.height() > 0.0 {
-                ((closest.y - rect.min.y) / rect.height()).clamp(0.0, 1.0)
-            } else {
-                0.5
-            }
+        Position::Left | Position::Right if rect.height() > 0.0 => {
+            ((closest.y - rect.min.y) / rect.height()).clamp(0.0, 1.0)
         }
         _ => 0.5,
     };

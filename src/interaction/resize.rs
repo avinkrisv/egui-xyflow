@@ -162,87 +162,87 @@ pub(crate) fn render_and_handle_resize<D>(
     let mut cursor_override: Option<egui::CursorIcon> = None;
 
     // ── Check if we're currently resizing this node ──────────────────────────
-    if let Some(ref rs) = resize_state {
-        if rs.node_id == *node_id {
-            // Ongoing resize — update based on drag delta
-            let delta = ui.input(|i| i.pointer.delta());
-            let released = ui.input(|i| i.pointer.primary_released());
-            cursor_override = Some(rs.handle.cursor());
+    if let Some(ref rs) = resize_state
+        && rs.node_id == *node_id
+    {
+        // Ongoing resize — update based on drag delta
+        let delta = ui.input(|i| i.pointer.delta());
+        let released = ui.input(|i| i.pointer.primary_released());
+        cursor_override = Some(rs.handle.cursor());
 
-            // On release, just clear the resize state.  The last drag
-            // frame already applied the correct dimensions; re-computing
-            // here would use press_origin() which returns None after
-            // release, resetting the node to its initial size.
-            if released {
-                return (None, changes, cursor_override);
+        // On release, just clear the resize state.  The last drag
+        // frame already applied the correct dimensions; re-computing
+        // here would use press_origin() which returns None after
+        // release, resetting the node to its initial size.
+        if released {
+            return (None, changes, cursor_override);
+        }
+
+        if delta != egui::Vec2::ZERO {
+            // Accumulate total pointer movement since resize started
+            // (we use the live pointer position vs the rect corner that was grabbed)
+            let total_delta_screen = ui
+                .input(|i| i.pointer.press_origin().zip(i.pointer.hover_pos()))
+                .map(|(origin, hover)| hover - origin)
+                .unwrap_or(egui::Vec2::ZERO);
+
+            let flow_delta = egui::vec2(
+                total_delta_screen.x / transform.scale,
+                total_delta_screen.y / transform.scale,
+            );
+
+            let (moves_left, moves_top) = rs.handle.affects_origin();
+            let (scales_w, scales_h) = rs.handle.affects_size();
+
+            let mut new_x = rs.initial_pos.x;
+            let mut new_y = rs.initial_pos.y;
+            let mut new_w = rs.initial_size.x;
+            let mut new_h = rs.initial_size.y;
+
+            if scales_w {
+                if moves_left {
+                    let delta_w = -flow_delta.x;
+                    new_w = (rs.initial_size.x + delta_w).max(MIN_NODE_SIZE);
+                    new_x = rs.initial_pos.x + rs.initial_size.x - new_w;
+                } else {
+                    new_w = (rs.initial_size.x + flow_delta.x).max(MIN_NODE_SIZE);
+                }
             }
 
-            if delta != egui::Vec2::ZERO {
-                // Accumulate total pointer movement since resize started
-                // (we use the live pointer position vs the rect corner that was grabbed)
-                let total_delta_screen = ui
-                    .input(|i| i.pointer.press_origin().zip(i.pointer.hover_pos()))
-                    .map(|(origin, hover)| hover - origin)
-                    .unwrap_or(egui::Vec2::ZERO);
-
-                let flow_delta = egui::vec2(
-                    total_delta_screen.x / transform.scale,
-                    total_delta_screen.y / transform.scale,
-                );
-
-                let (moves_left, moves_top) = rs.handle.affects_origin();
-                let (scales_w, scales_h) = rs.handle.affects_size();
-
-                let mut new_x = rs.initial_pos.x;
-                let mut new_y = rs.initial_pos.y;
-                let mut new_w = rs.initial_size.x;
-                let mut new_h = rs.initial_size.y;
-
-                if scales_w {
-                    if moves_left {
-                        let delta_w = -flow_delta.x;
-                        new_w = (rs.initial_size.x + delta_w).max(MIN_NODE_SIZE);
-                        new_x = rs.initial_pos.x + rs.initial_size.x - new_w;
-                    } else {
-                        new_w = (rs.initial_size.x + flow_delta.x).max(MIN_NODE_SIZE);
-                    }
+            if scales_h {
+                if moves_top {
+                    let delta_h = -flow_delta.y;
+                    new_h = (rs.initial_size.y + delta_h).max(MIN_NODE_SIZE);
+                    new_y = rs.initial_pos.y + rs.initial_size.y - new_h;
+                } else {
+                    new_h = (rs.initial_size.y + flow_delta.y).max(MIN_NODE_SIZE);
                 }
+            }
 
-                if scales_h {
-                    if moves_top {
-                        let delta_h = -flow_delta.y;
-                        new_h = (rs.initial_size.y + delta_h).max(MIN_NODE_SIZE);
-                        new_y = rs.initial_pos.y + rs.initial_size.y - new_h;
-                    } else {
-                        new_h = (rs.initial_size.y + flow_delta.y).max(MIN_NODE_SIZE);
-                    }
-                }
-
-                // Position change (if origin moved)
-                if (new_x - rs.initial_pos.x).abs() > 0.1 || (new_y - rs.initial_pos.y).abs() > 0.1
-                {
-                    changes.push(NodeChange::Position {
-                        id: node_id.clone(),
-                        position: Some(egui::pos2(new_x, new_y)),
-                        dragging: Some(true),
-                    });
-                }
-
-                // Size change
-                changes.push(NodeChange::Dimensions {
+            // Position change (if origin moved)
+            if (new_x - rs.initial_pos.x).abs() > 0.1 || (new_y - rs.initial_pos.y).abs() > 0.1
+            {
+                changes.push(NodeChange::Position {
                     id: node_id.clone(),
-                    dimensions: Some(crate::types::position::Dimensions {
-                        width: new_w,
-                        height: new_h,
-                    }),
+                    position: Some(egui::pos2(new_x, new_y)),
+                    dragging: Some(true),
                 });
-
-                return (resize_state, changes, cursor_override);
             }
 
-            // No movement and not released — keep state.
+            // Size change
+            changes.push(NodeChange::Dimensions {
+                id: node_id.clone(),
+                dimensions: Some(crate::types::position::Dimensions {
+                    width: new_w,
+                    height: new_h,
+                }),
+            });
+
             return (resize_state, changes, cursor_override);
         }
+
+        // No movement and not released — keep state.
+        return (resize_state, changes, cursor_override);
     }
 
     // ── No active resize — render handles and check for new press ─────────────
@@ -269,7 +269,7 @@ pub(crate) fn render_and_handle_resize<D>(
         );
 
         // Interaction
-        let handle_id = ui.id().with(format!("resize_{:?}_{}", node_id, kind as u8));
+        let handle_id = ui.scope_id().with(format!("resize_{:?}_{}", node_id, kind as u8));
         let resp = ui.interact(rect, handle_id, egui::Sense::drag());
 
         if resp.hovered() {

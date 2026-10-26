@@ -367,16 +367,17 @@ impl PipelineApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for PipelineApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // -- Toolbar ---------------------------------------------------------
-        egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
+        egui::Panel::top("toolbar").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading("Data Pipeline Builder");
                 ui.separator();
 
                 // Viewport controls
                 if ui.button("Fit All").clicked() {
-                    let rect = ctx.screen_rect();
+                    let rect = ctx.viewport_rect();
                     let t = ctx.input(|i| i.time);
                     self.state.fit_view(rect, 40.0, t);
                 }
@@ -442,10 +443,10 @@ impl eframe::App for PipelineApp {
         });
 
         // -- Side panel: connection counts -----------------------------------
-        egui::SidePanel::right("connections")
+        egui::Panel::right("connections")
             .resizable(true)
-            .min_width(220.0)
-            .show(ctx, |ui| {
+            .min_size(220.0)
+            .show(ui, |ui| {
                 ui.heading("Connection Counts");
                 ui.separator();
 
@@ -528,7 +529,7 @@ impl eframe::App for PipelineApp {
         // -- Main canvas -----------------------------------------------------
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::from_rgb(245, 245, 250)))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 let events = FlowCanvas::new(&mut self.state, &DefaultNodeWidget)
                     .connection_validator(&self.validator)
                     .show(ui);

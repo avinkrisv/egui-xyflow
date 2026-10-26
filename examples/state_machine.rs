@@ -447,11 +447,11 @@ impl StateMachineApp {
                 self.state.has_animated_edges = self.state.edges.iter().any(|e| e.animated);
             } else {
                 // Ensure the edge is animated
-                if let Some(edge) = self.state.edges.iter_mut().find(|e| e.id.as_str() == *eid) {
-                    if !edge.animated {
-                        edge.animated = true;
-                        self.state.has_animated_edges = true;
-                    }
+                if let Some(edge) = self.state.edges.iter_mut().find(|e| e.id.as_str() == *eid)
+                    && !edge.animated
+                {
+                    edge.animated = true;
+                    self.state.has_animated_edges = true;
                 }
             }
         }
@@ -463,20 +463,21 @@ impl StateMachineApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for StateMachineApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         let time = ctx.input(|i| i.time);
 
         // Tick edge highlight animation
         self.tick_animation(time);
 
         // -- Top toolbar --
-        egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
+        egui::Panel::top("toolbar").show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.heading("State Machine Visualizer");
                 ui.separator();
 
                 if ui.button("Fit All").clicked() {
-                    let rect = ctx.screen_rect();
+                    let rect = ctx.viewport_rect();
                     let t = ctx.input(|i| i.time);
                     self.state.fit_view(rect, 40.0, t);
                 }
@@ -497,10 +498,10 @@ impl eframe::App for StateMachineApp {
         });
 
         // -- Side panel: current state + transitions --
-        egui::SidePanel::right("control_panel")
+        egui::Panel::right("control_panel")
             .resizable(true)
-            .min_width(240.0)
-            .show(ctx, |ui| {
+            .min_size(240.0)
+            .show(ui, |ui| {
                 ui.heading("Current State");
                 ui.add_space(4.0);
 
@@ -625,7 +626,7 @@ impl eframe::App for StateMachineApp {
 
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::from_rgb(250, 250, 255)))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 let events = FlowCanvas::new(&mut self.state, &node_widget)
                     .connection_validator(&self.validator)
                     .show(ui);

@@ -43,11 +43,11 @@ pub(crate) fn handle_pan_zoom(
 
     // ── Scroll wheel → zoom ──────────────────────────────────────────────────
     if config.zoom_on_scroll && response.hovered() {
-        let scroll = ui.input(|i| i.raw_scroll_delta.y);
+        let scroll = raw_scroll_delta(ui).y;
         if scroll != 0.0 {
             // Map raw pixel delta → zoom factor.
             // Raw scroll on most platforms is in pixels; 120 px ≈ one notch.
-            let factor = (1.0 + scroll * 0.005).clamp(0.5, 2.0);
+            let factor = (1.0_f32 + scroll * 0.005).clamp(0.5, 2.0);
             let pointer = ui
                 .input(|i| i.pointer.hover_pos())
                 .unwrap_or(canvas_rect.center());
@@ -122,7 +122,7 @@ pub(crate) fn handle_pan_zoom(
 
     // ── Scroll → pan (pan_on_scroll mode, mutually exclusive with zoom) ──────
     if config.pan_on_scroll && response.hovered() {
-        let scroll = ui.input(|i| i.raw_scroll_delta);
+        let scroll = raw_scroll_delta(ui);
         if scroll != egui::Vec2::ZERO {
             use crate::types::viewport::PanOnScrollMode;
             match config.pan_on_scroll_mode {
@@ -147,6 +147,45 @@ pub(crate) fn handle_pan_zoom(
         animate_zoom,
         zoom_target,
     }
+}
+
+/// Unsmoothed scroll delta for this frame, in points.
+///
+/// egui 0.35 removed `InputState::raw_scroll_delta`; this sums the frame's
+/// `MouseWheel` events the way egui 0.31 did (line/page units converted to
+/// points, Shift folds vertical scroll into horizontal).
+fn raw_scroll_delta(ui: &egui::Ui) -> egui::Vec2 {
+    let line_scroll_speed = ui
+        .ctx()
+        .memory(|m| m.options.input_options.line_scroll_speed);
+    ui.input(|i| {
+        let page_height = i.viewport_rect().height();
+        i.raw
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                egui::Event::MouseWheel {
+                    unit,
+                    delta,
+                    phase: egui::TouchPhase::Move,
+                    modifiers,
+                    ..
+                } => {
+                    let delta = match unit {
+                        egui::MouseWheelUnit::Point => *delta,
+                        egui::MouseWheelUnit::Line => line_scroll_speed * *delta,
+                        egui::MouseWheelUnit::Page => page_height * *delta,
+                    };
+                    Some(if modifiers.shift {
+                        egui::vec2(delta.x + delta.y, 0.0)
+                    } else {
+                        delta
+                    })
+                }
+                _ => None,
+            })
+            .fold(egui::Vec2::ZERO, |acc, d| acc + d)
+    })
 }
 
 /// Advance a smoothed zoom toward its stored target by one frame.

@@ -42,8 +42,8 @@
 //! }
 //!
 //! impl eframe::App for MyApp {
-//!     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-//!         egui::CentralPanel::default().show(ctx, |ui| {
+//!     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+//!         egui::CentralPanel::default().show(ui, |ui| {
 //!             let events =
 //!                 FlowCanvas::new(&mut self.state, &DefaultNodeWidget).show(ui);
 //!             for conn in &events.connections_made {
@@ -160,7 +160,7 @@
 //!
 //! ## Compatibility
 //!
-//! Built against `egui` 0.31. MSRV: 1.85 (edition 2024).
+//! Built against `egui` 0.37. MSRV: 1.95 (edition 2024).
 
 #![warn(missing_docs)]
 

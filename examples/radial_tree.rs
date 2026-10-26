@@ -408,9 +408,10 @@ impl RadialTreeApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for RadialTreeApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // Top bar
-        egui::TopBottomPanel::top("header").show(ctx, |ui| {
+        egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.strong("Radial Tidy Tree");
                 ui.separator();
@@ -420,9 +421,8 @@ impl eframe::App for RadialTreeApp {
                 ));
                 ui.separator();
                 if ui.button("Fit View").clicked() {
-                    let rect = ctx.screen_rect();
-                    self.state
-                        .fit_view(rect, 60.0, ctx.input(|i| i.time));
+                    let rect = ctx.viewport_rect();
+                    self.state.fit_view(rect, 60.0, ctx.input(|i| i.time));
                 }
                 if ui.button("Zoom In").clicked() {
                     self.state.zoom_in(ctx.input(|i| i.time));
@@ -436,7 +436,7 @@ impl eframe::App for RadialTreeApp {
         // Canvas
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::WHITE))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 // Fit view on first frame
                 if self.first_frame {
                     let rect = ui.available_rect_before_wrap();

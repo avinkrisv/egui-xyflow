@@ -210,30 +210,30 @@ fn render_single_edge<ND, ED>(
     // `render_edge_markers` — so they are not overpainted by node bodies.
 
     // Render text label at the cached `label_pos`.
-    if let Some(label) = edge.label.as_deref() {
-        if !label.is_empty() {
-            let center = flow_to_screen(cache.label_pos, transform);
-            let font = egui::FontId::proportional(config.edge_label_font_size * transform.scale);
-            let galley = painter.layout_no_wrap(
-                label.to_owned(),
-                font,
-                config.edge_label_color,
-            );
-            let pad = config.edge_label_padding * transform.scale;
-            let text_size = galley.size();
-            let rect = egui::Rect::from_center_size(
-                center,
-                egui::vec2(text_size.x + pad * 2.0, text_size.y + pad * 2.0),
-            );
-            if config.edge_label_bg_color != egui::Color32::TRANSPARENT {
-                painter.rect_filled(rect, 3.0 * transform.scale, config.edge_label_bg_color);
-            }
-            let text_pos = egui::pos2(
-                rect.center().x - text_size.x * 0.5,
-                rect.center().y - text_size.y * 0.5,
-            );
-            painter.galley(text_pos, galley, config.edge_label_color);
+    if let Some(label) = edge.label.as_deref()
+        && !label.is_empty()
+    {
+        let center = flow_to_screen(cache.label_pos, transform);
+        let font = egui::FontId::proportional(config.edge_label_font_size * transform.scale);
+        let galley = painter.layout_no_wrap(
+            label.to_owned(),
+            font,
+            config.edge_label_color,
+        );
+        let pad = config.edge_label_padding * transform.scale;
+        let text_size = galley.size();
+        let rect = egui::Rect::from_center_size(
+            center,
+            egui::vec2(text_size.x + pad * 2.0, text_size.y + pad * 2.0),
+        );
+        if config.edge_label_bg_color != egui::Color32::TRANSPARENT {
+            painter.rect_filled(rect, 3.0 * transform.scale, config.edge_label_bg_color);
         }
+        let text_pos = egui::pos2(
+            rect.center().x - text_size.x * 0.5,
+            rect.center().y - text_size.y * 0.5,
+        );
+        painter.galley(text_pos, galley, config.edge_label_color);
     }
 
     let src_screen = *screen_points.first()?;

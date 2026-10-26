@@ -462,19 +462,19 @@ where
                 active_drag_delta = delta;
 
                 // Auto-pan when near the canvas edge
-                if self.state.config.auto_pan_on_node_drag {
-                    if let Some(pp) = pointer_pos {
-                        let pan =
-                            calc_auto_pan(pp, canvas_rect, self.state.config.auto_pan_speed, 40.0);
-                        if pan != egui::Vec2::ZERO {
-                            self.state.viewport.x -= pan.x;
-                            self.state.viewport.y -= pan.y;
-                            clamp_translate(
-                                &mut self.state.viewport,
-                                &self.state.config.translate_extent,
-                                canvas_rect,
-                            );
-                        }
+                if self.state.config.auto_pan_on_node_drag
+                    && let Some(pp) = pointer_pos
+                {
+                    let pan =
+                        calc_auto_pan(pp, canvas_rect, self.state.config.auto_pan_speed, 40.0);
+                    if pan != egui::Vec2::ZERO {
+                        self.state.viewport.x -= pan.x;
+                        self.state.viewport.y -= pan.y;
+                        clamp_translate(
+                            &mut self.state.viewport,
+                            &self.state.config.translate_extent,
+                            canvas_rect,
+                        );
                     }
                 }
             }
@@ -501,8 +501,8 @@ where
                     let builder = egui::UiBuilder::new()
                         .max_rect(screen_rect)
                         .layout(egui::Layout::top_down(egui::Align::Min));
-                    ui.scope_builder(builder, |child_ui| {
-                        widget.show_ui(child_ui, node_ref, screen_rect, cfg, is_hovered);
+                    ui.scope_builder(builder, |node_ui| {
+                        widget.show_ui(node_ui, node_ref, screen_rect, cfg, is_hovered);
                     });
                 }
             }
@@ -524,14 +524,14 @@ where
                 );
 
                 // Check if a handle was just pressed this frame
-                if can_connect && primary_pressed && newly_pressed_handle.is_none() {
-                    if let Some(pp) = pointer_pos {
-                        for hr in &hit_rects {
-                            if hr.contains(pp) {
-                                let from_flow = screen_to_flow(hr.screen_center, &transform);
-                                newly_pressed_handle = Some((hr.handle.clone(), from_flow));
-                                break;
-                            }
+                if can_connect && primary_pressed && newly_pressed_handle.is_none()
+                    && let Some(pp) = pointer_pos
+                {
+                    for hr in &hit_rects {
+                        if hr.contains(pp) {
+                            let from_flow = screen_to_flow(hr.screen_center, &transform);
+                            newly_pressed_handle = Some((hr.handle.clone(), from_flow));
+                            break;
                         }
                     }
                 }
@@ -945,18 +945,18 @@ where
                 None
             };
 
-            if let Some(screen_pos) = click_pos {
-                if let Some(flow_pos) = mm_info.screen_to_flow(screen_pos) {
-                    // Animate the viewport so that flow_pos is centred.
-                    let target_zoom = self.state.viewport.zoom; // keep current zoom
-                    let target = crate::types::viewport::Viewport {
-                        x: canvas_rect.center().x - flow_pos.x * target_zoom,
-                        y: canvas_rect.center().y - flow_pos.y * target_zoom,
-                        zoom: target_zoom,
-                    };
-                    self.state.animate_viewport(target, time);
-                    events.set_viewport_changed();
-                }
+            if let Some(screen_pos) = click_pos
+                && let Some(flow_pos) = mm_info.screen_to_flow(screen_pos)
+            {
+                // Animate the viewport so that flow_pos is centred.
+                let target_zoom = self.state.viewport.zoom; // keep current zoom
+                let target = crate::types::viewport::Viewport {
+                    x: canvas_rect.center().x - flow_pos.x * target_zoom,
+                    y: canvas_rect.center().y - flow_pos.y * target_zoom,
+                    zoom: target_zoom,
+                };
+                self.state.animate_viewport(target, time);
+                events.set_viewport_changed();
             }
 
             // Cursor hint when hovering the minimap
@@ -1199,10 +1199,10 @@ fn process_edge_clicks<ND, ED>(
 
     let hit = find_edge_under_pointer(edges, node_lookup, transform, config, pp);
 
-    if config.track_edge_hover {
-        if let Some(ref id) = hit {
-            events.set_edge_hovered(id.clone());
-        }
+    if config.track_edge_hover
+        && let Some(ref id) = hit
+    {
+        events.set_edge_hovered(id.clone());
     }
 
     if !primary_pressed {
@@ -1468,69 +1468,68 @@ fn process_selection<ND, ED>(
     }
 
     // ── Start drag ───────────────────────────────────────────────────────────
-    if canvas_response.drag_started_by(egui::PointerButton::Primary) {
-        if let Some(pp) = pointer_pos {
-            if canvas_rect.contains(pp) {
-                new_mem.selection_start = Some(pp);
-                new_mem.pending_selection.clear();
+    if canvas_response.drag_started_by(egui::PointerButton::Primary)
+        && let Some(pp) = pointer_pos
+        && canvas_rect.contains(pp)
+    {
+        new_mem.selection_start = Some(pp);
+        new_mem.pending_selection.clear();
 
-                // Deselect everything unless Shift is held
-                let shift_held = ui.input(|i| i.modifiers.shift);
-                if !shift_held {
-                    node_changes.extend(node_lookup.keys().map(|id| NodeChange::Select {
-                        id: id.clone(),
+        // Deselect everything unless Shift is held
+        let shift_held = ui.input(|i| i.modifiers.shift);
+        if !shift_held {
+            node_changes.extend(node_lookup.keys().map(|id| NodeChange::Select {
+                id: id.clone(),
+                selected: false,
+            }));
+            for edge in edges {
+                if edge.selected {
+                    edge_changes.push(EdgeChange::Select {
+                        id: edge.id.clone(),
                         selected: false,
-                    }));
-                    for edge in edges {
-                        if edge.selected {
-                            edge_changes.push(EdgeChange::Select {
-                                id: edge.id.clone(),
-                                selected: false,
-                            });
-                        }
-                    }
+                    });
                 }
-                return (
-                    Some(egui::Rect::from_min_size(pp, egui::Vec2::ZERO)),
-                    new_mem,
-                    node_changes,
-                    edge_changes,
-                );
             }
         }
+        return (
+            Some(egui::Rect::from_min_size(pp, egui::Vec2::ZERO)),
+            new_mem,
+            node_changes,
+            edge_changes,
+        );
     }
 
     // ── Update drag ───────────────────────────────────────────────────────────
-    if canvas_response.dragged_by(egui::PointerButton::Primary) {
-        if let (Some(start), Some(pp)) = (new_mem.selection_start, pointer_pos) {
-            let sel = egui::Rect::from_two_pos(start, pp);
-            return (Some(sel), new_mem, node_changes, edge_changes);
-        }
+    if canvas_response.dragged_by(egui::PointerButton::Primary)
+        && let (Some(start), Some(pp)) = (new_mem.selection_start, pointer_pos)
+    {
+        let sel = egui::Rect::from_two_pos(start, pp);
+        return (Some(sel), new_mem, node_changes, edge_changes);
     }
 
     // ── Finish drag ───────────────────────────────────────────────────────────
     if canvas_response.drag_stopped() {
-        if let Some(sel) = current_rect {
-            if sel.width() > 4.0 || sel.height() > 4.0 {
-                let selected_ids =
-                    get_nodes_inside(node_lookup, sel, transform, config.selection_mode);
-                let shift_held = ui.input(|i| i.modifiers.shift);
+        if let Some(sel) = current_rect
+            && (sel.width() > 4.0 || sel.height() > 4.0)
+        {
+            let selected_ids =
+                get_nodes_inside(node_lookup, sel, transform, config.selection_mode);
+            let shift_held = ui.input(|i| i.modifiers.shift);
 
-                if !shift_held {
-                    for id in node_lookup.keys() {
-                        let is_selected = selected_ids.contains(id);
-                        node_changes.push(NodeChange::Select {
-                            id: id.clone(),
-                            selected: is_selected,
-                        });
-                    }
-                } else {
-                    for id in &selected_ids {
-                        node_changes.push(NodeChange::Select {
-                            id: id.clone(),
-                            selected: true,
-                        });
-                    }
+            if !shift_held {
+                for id in node_lookup.keys() {
+                    let is_selected = selected_ids.contains(id);
+                    node_changes.push(NodeChange::Select {
+                        id: id.clone(),
+                        selected: is_selected,
+                    });
+                }
+            } else {
+                for id in &selected_ids {
+                    node_changes.push(NodeChange::Select {
+                        id: id.clone(),
+                        selected: true,
+                    });
                 }
             }
         }
@@ -1676,26 +1675,26 @@ fn handle_anchor_drag<ND, ED>(
     }
 
     // ── Release: commit the anchor ───────────────────────────────────────────
-    if primary_released {
-        if let Some(drag) = anchor_drag.take() {
-            let flow_pp = screen_to_flow(pp, transform);
-            if let Some(node) = node_lookup.get(&drag.node_id) {
-                let anchor = project_to_border(flow_pp, node.rect());
-                let (sa, ta) = match drag.endpoint {
-                    AnchorEndpoint::Source => (Some(Some(anchor)), None),
-                    AnchorEndpoint::Target => (None, Some(Some(anchor))),
-                };
-                changes.push(EdgeChange::Anchor {
-                    id: drag.edge_id.clone(),
-                    source_anchor: sa,
-                    target_anchor: ta,
-                });
-                events.push_anchor_changed(
-                    drag.edge_id,
-                    sa.and_then(|v| v),
-                    ta.and_then(|v| v),
-                );
-            }
+    if primary_released
+        && let Some(drag) = anchor_drag.take()
+    {
+        let flow_pp = screen_to_flow(pp, transform);
+        if let Some(node) = node_lookup.get(&drag.node_id) {
+            let anchor = project_to_border(flow_pp, node.rect());
+            let (sa, ta) = match drag.endpoint {
+                AnchorEndpoint::Source => (Some(Some(anchor)), None),
+                AnchorEndpoint::Target => (None, Some(Some(anchor))),
+            };
+            changes.push(EdgeChange::Anchor {
+                id: drag.edge_id.clone(),
+                source_anchor: sa,
+                target_anchor: ta,
+            });
+            events.push_anchor_changed(
+                drag.edge_id,
+                sa.and_then(|v| v),
+                ta.and_then(|v| v),
+            );
         }
     }
 

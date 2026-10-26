@@ -157,13 +157,14 @@ impl DemoApp {
 }
 
 impl eframe::App for DemoApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
+        egui::Panel::top("toolbar").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.heading("edge labels + culling");
                 ui.separator();
                 if ui.button("Fit all").clicked() {
-                    let rect = ctx.screen_rect();
+                    let rect = ctx.viewport_rect();
                     let t = ctx.input(|i| i.time);
                     self.state.fit_view(rect, 40.0, t);
                 }
@@ -188,7 +189,7 @@ impl eframe::App for DemoApp {
 
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::from_rgb(245, 245, 250)))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 FlowCanvas::new(&mut self.state, &DefaultNodeWidget).show(ui);
             });
     }

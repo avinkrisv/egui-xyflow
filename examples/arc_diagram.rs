@@ -631,8 +631,9 @@ impl ArcDiagramApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for ArcDiagramApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("header").show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
+        egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.strong("Arc Diagram — Les Miserables");
                 ui.separator();
@@ -642,7 +643,7 @@ impl eframe::App for ArcDiagramApp {
                 ));
                 ui.separator();
                 if ui.button("Fit View").clicked() {
-                    let rect = ctx.screen_rect();
+                    let rect = ctx.viewport_rect();
                     self.state.fit_view(rect, 80.0, ctx.input(|i| i.time));
                 }
                 if ui.button("Zoom In").clicked() {
@@ -656,7 +657,7 @@ impl eframe::App for ArcDiagramApp {
 
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::WHITE))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 if self.first_frame {
                     let rect = ui.available_rect_before_wrap();
                     self.state

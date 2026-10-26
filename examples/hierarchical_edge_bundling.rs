@@ -925,7 +925,8 @@ impl HierarchicalEdgeBundlingApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for HierarchicalEdgeBundlingApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // Determine which node (if any) is hovered by checking selected nodes
         // (egui_xyflow highlights on hover through the node_hovered event).
         // We detect the hovered node by checking which nodes report as selected.
@@ -933,7 +934,7 @@ impl eframe::App for HierarchicalEdgeBundlingApp {
         let mut hovered_idx: Option<usize> = None;
 
         // Top bar
-        egui::TopBottomPanel::top("header").show(ctx, |ui| {
+        egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.strong("Hierarchical Edge Bundling");
                 ui.separator();
@@ -943,9 +944,8 @@ impl eframe::App for HierarchicalEdgeBundlingApp {
                 ));
                 ui.separator();
                 if ui.button("Fit View").clicked() {
-                    let rect = ctx.screen_rect();
-                    self.state
-                        .fit_view(rect, 60.0, ctx.input(|i| i.time));
+                    let rect = ctx.viewport_rect();
+                    self.state.fit_view(rect, 60.0, ctx.input(|i| i.time));
                 }
                 if ui.button("Zoom In").clicked() {
                     self.state.zoom_in(ctx.input(|i| i.time));
@@ -959,7 +959,7 @@ impl eframe::App for HierarchicalEdgeBundlingApp {
         // Canvas
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::WHITE))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 // Fit view on first frame
                 if self.first_frame {
                     let rect = ui.available_rect_before_wrap();

@@ -81,8 +81,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-egui_xyflow = "0.4"
-eframe = "0.31"
+egui_xyflow = "0.5"
+eframe = "0.37"
 ```
 
 ### Minimal Example
@@ -127,8 +127,8 @@ impl MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ui, |ui| {
             let events = FlowCanvas::new(&mut self.state, &DefaultNodeWidget).show(ui);
 
             // React to user interactions
@@ -542,6 +542,7 @@ cargo run --release --example physics_bench     # physics timing harness
 
 | egui_xyflow | egui |
 |-------------|------|
+| 0.5         | 0.37 |
 | 0.4         | 0.31 |
 | 0.3         | 0.31 |
 | 0.2         | 0.31 |

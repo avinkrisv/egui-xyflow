@@ -1,8 +1,8 @@
 [package]
 name = "egui_xyflow"
-version = "0.4.3"
+version = "0.5.0"
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.95"
 description = "An interactive node-graph editor widget for egui, inspired by xyflow (React Flow)"
 license = "MIT"
 repository = "https://github.com/avinkrisv/egui_xyflow"
@@ -12,15 +12,15 @@ categories = ["gui", "visualization"]
 exclude = ["CLAUDE.md", ".claude/", "benchmarks/", "screenshots/", "capture_screenshots.sh"]
 
 [dependencies]
-egui = "0.31"
-emath = "0.31"
-epaint = "0.31"
+egui = "0.37"
+emath = "0.37"
+epaint = "0.37"
 serde = { version = "1", features = ["derive", "rc"], optional = true }
 smallvec = "1"
 log = "0.4"
 
 [dev-dependencies]
-eframe = { version = "0.31", features = ["default"] }
+eframe = { version = "0.37", features = ["default"] }
 env_logger = "0.11"
 serde_json = "1"
 

@@ -82,6 +82,7 @@ pub struct ForceSimulation {
 /// Use closures to compute radius / initial velocity / per-node charge
 /// strength from your own domain data (rather than the node's bounding-box
 /// size, which is the default).
+#[allow(clippy::type_complexity)]
 pub struct FromStateOptions<'a, ND> {
     /// Compute the collision radius for this node. Default:
     /// `max(width, height) / 2`.
@@ -401,14 +402,14 @@ impl ForceSimulation {
         // populated). Hand-built SimNodes keep the old zip-by-index
         // behaviour.
         for (sim, flow_node) in self.nodes.iter().zip(state.nodes.iter()) {
-            if let Some(ref sid) = sim.id {
-                if sid != &flow_node.id {
-                    log::warn!(
-                        "ForceSimulation id drift: sim={} flow={} — rebuild",
-                        sid, flow_node.id
-                    );
-                    return false;
-                }
+            if let Some(ref sid) = sim.id
+                && sid != &flow_node.id
+            {
+                log::warn!(
+                    "ForceSimulation id drift: sim={} flow={} — rebuild",
+                    sid, flow_node.id
+                );
+                return false;
             }
         }
         true

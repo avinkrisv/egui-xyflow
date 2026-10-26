@@ -69,7 +69,7 @@ All mutations are represented as enum variants (`NodeChange::Position`, `NodeCha
 
 ## Dependencies
 
-- `egui 0.31`, `emath 0.31`, `epaint 0.31` — UI framework
+- `egui 0.37`, `emath 0.37`, `epaint 0.37` — UI framework (requires Rust 1.95)
 - `serde` (optional, default-enabled) — serialization
 - `eframe` (dev only) — for running examples
 

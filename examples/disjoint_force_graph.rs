@@ -345,12 +345,13 @@ impl DisjointForceApp {
 // ---------------------------------------------------------------------------
 
 impl eframe::App for DisjointForceApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        let ctx = &ui.ctx().clone();
         // Physics: sync drag → tick forces → push positions back
         self.simulation.step(&mut self.state);
 
         // -- Top bar --
-        egui::TopBottomPanel::top("header").show(ctx, |ui| {
+        egui::Panel::top("header").show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.strong("Disjoint Force-Directed Graph");
                 ui.separator();
@@ -363,18 +364,17 @@ impl eframe::App for DisjointForceApp {
                     self.simulation.reheat();
                 }
                 if ui.button("Fit View").clicked() {
-                    let rect = ctx.screen_rect();
-                    self.state
-                        .fit_view(rect, 60.0, ctx.input(|i| i.time));
+                    let rect = ctx.viewport_rect();
+                    self.state.fit_view(rect, 60.0, ctx.input(|i| i.time));
                 }
             });
         });
 
         // -- Side panel --
-        egui::SidePanel::right("info")
+        egui::Panel::right("info")
             .resizable(true)
-            .min_width(180.0)
-            .show(ctx, |ui| {
+            .min_size(180.0)
+            .show(ui, |ui| {
                 ui.heading("Legend");
                 ui.separator();
 
@@ -419,7 +419,7 @@ impl eframe::App for DisjointForceApp {
         // -- Canvas --
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(egui::Color32::WHITE))
-            .show(ctx, |ui| {
+            .show(ui, |ui| {
                 if self.first_frame {
                     let rect = ui.available_rect_before_wrap();
                     self.state

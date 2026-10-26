@@ -305,15 +305,15 @@ impl<ND: Clone, ED: Clone> FlowState<ND, ED> {
 
         // Resolve absolute positions (simple single-level parent support).
         for (child_id, parent_id) in &parent_map {
-            if let Some(&(parent_pos, parent_z)) = parent_data.get(parent_id) {
-                if let Some(child) = self.node_lookup.get_mut(child_id) {
-                    child.internals.position_absolute = egui::pos2(
-                        parent_pos.x + child.node.position.x,
-                        parent_pos.y + child.node.position.y,
-                    );
-                    if child.internals.z <= parent_z {
-                        child.internals.z = parent_z + 1;
-                    }
+            if let Some(&(parent_pos, parent_z)) = parent_data.get(parent_id)
+                && let Some(child) = self.node_lookup.get_mut(child_id)
+            {
+                child.internals.position_absolute = egui::pos2(
+                    parent_pos.x + child.node.position.x,
+                    parent_pos.y + child.node.position.y,
+                );
+                if child.internals.z <= parent_z {
+                    child.internals.z = parent_z + 1;
                 }
             }
         }
